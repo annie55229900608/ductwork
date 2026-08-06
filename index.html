@@ -1,0 +1,2490 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>DCT自動成交系統</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;600;700&family=Noto+Sans+TC:wght@400;500;600;700&family=Cormorant+Garamond:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ivory:#FBF7F5;
+    --blush:#F6E4E6;
+    --blush-deep:#EFD2D6;
+    --rose:#C98A96;
+    --rose-deep:#8A4B57;
+    --plum:#4A2A33;
+    --sage:#A9B99E;
+    --gold:#C9A876;
+    --ink:#33262A;
+    --line:#EAD9DA;
+    --warn:#B23A3A;
+    --warn-bg:#FBE7E4;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+    background:
+      radial-gradient(circle at 12% 0%, rgba(201,138,150,0.14), transparent 45%),
+      radial-gradient(circle at 100% 15%, rgba(169,185,158,0.10), transparent 40%),
+      var(--ivory);
+    color:var(--ink);
+    padding-bottom:80px;
+  }
+
+  /* 內部使用警語 */
+  .internal-banner{
+    background:var(--warn-bg);
+    color:var(--warn);
+    text-align:center;
+    font-size:13px;
+    font-weight:700;
+    padding:9px 12px;
+    letter-spacing:0.5px;
+    border-bottom:1px solid #E8B9B2;
+  }
+
+  header{
+    padding:34px 20px 22px;
+    text-align:center;
+    background:linear-gradient(180deg, var(--blush) 0%, var(--ivory) 100%);
+    border-bottom:1px solid var(--line);
+    position:relative;
+  }
+  header::after{
+    content:"";
+    position:absolute;left:50%;bottom:-1px;transform:translateX(-50%);
+    width:56px;height:2px;background:linear-gradient(90deg, transparent, var(--gold), transparent);
+  }
+  header .kicker{
+    display:inline-flex;align-items:center;gap:8px;
+    font-family:"Cormorant Garamond",serif;
+    font-size:13px;letter-spacing:6px;color:var(--gold);
+    margin-bottom:10px;text-transform:uppercase;font-weight:600;
+  }
+  header .kicker::before, header .kicker::after{
+    content:"";width:18px;height:1px;background:var(--gold);
+  }
+  header h1{
+    margin:0;font-family:"Noto Serif TC",serif;
+    font-size:26px;color:var(--plum);letter-spacing:3px;font-weight:600;
+  }
+  header p{margin:10px 0 0;font-size:13px;color:var(--rose-deep);letter-spacing:0.5px;}
+
+  /* 分頁導覽 */
+  nav.tabs{
+    display:flex;gap:6px;overflow-x:auto;padding:14px 16px;
+    background:#fff;border-bottom:1px solid var(--line);
+    -webkit-overflow-scrolling:touch;
+  }
+  nav.tabs::-webkit-scrollbar{display:none;}
+  .tab-btn{
+    flex:0 0 auto;padding:9px 17px;border-radius:999px;border:1px solid var(--blush-deep);
+    background:var(--ivory);color:var(--rose-deep);font-size:13.5px;font-weight:600;
+    cursor:pointer;white-space:nowrap;letter-spacing:0.5px;transition:all .15s;
+  }
+  .tab-btn.active{
+    background:linear-gradient(135deg, var(--rose-deep), var(--plum));
+    border-color:var(--plum);color:#fff;
+    box-shadow:0 4px 12px rgba(74,42,51,0.25);
+  }
+
+  .wrap{max-width:640px;margin:0 auto;padding:20px 16px;}
+  .page{display:none;}
+  .page.active{display:block;}
+
+  .placeholder-box{
+    background:#fff;border:1px dashed var(--line);border-radius:18px;
+    padding:60px 20px;text-align:center;color:var(--rose-deep);font-size:15px;line-height:1.9;
+  }
+
+  .step{
+    background:#fff;border:1px solid var(--line);border-radius:20px;
+    box-shadow:0 10px 28px rgba(138,75,87,0.08);margin-bottom:22px;overflow:hidden;
+  }
+  .step-head{
+    background:linear-gradient(135deg, #fff 0%, var(--blush) 130%);
+    color:var(--plum);padding:17px 20px 17px 18px;display:flex;align-items:center;gap:10px;
+    font-size:16.5px;letter-spacing:1px;font-weight:700;
+    border-left:4px solid var(--gold);
+    border-bottom:1px solid var(--line);
+  }
+  .step-head .num{
+    width:26px;height:26px;border-radius:50%;background:var(--rose-deep);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;font-weight:700;
+  }
+  .step-body{padding:18px 20px 22px;}
+  .q{margin-bottom:18px;}
+  .q label.title{display:block;font-size:15px;font-weight:600;color:var(--plum);margin-bottom:9px;}
+  .opts{display:flex;flex-wrap:wrap;gap:8px;}
+  .opt{
+    padding:9px 14px;border:1.5px solid var(--blush-deep);border-radius:999px;font-size:14px;
+    background:var(--ivory);color:var(--ink);cursor:pointer;user-select:none;transition:all .15s;
+  }
+  .opt.selected{background:var(--rose-deep);border-color:var(--rose-deep);color:#fff;}
+  input[type=text], input[type=number]{
+    width:100%;padding:10px 12px;border:1.5px solid var(--blush-deep);border-radius:10px;
+    font-size:15px;background:var(--ivory);color:var(--ink);font-family:inherit;
+  }
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:6px;
+    padding:13px 22px;border-radius:12px;border:none;font-size:15px;font-weight:700;
+    cursor:pointer;width:100%;letter-spacing:1.5px;
+  }
+  .btn-primary{
+    background:linear-gradient(135deg, var(--rose), var(--rose-deep));color:#fff;
+    box-shadow:0 8px 20px rgba(138,75,87,0.28);
+  }
+  .btn-copy{
+    background:var(--blush);color:var(--rose-deep);border:1px solid var(--blush-deep);
+    padding:8px 14px;font-size:13px;width:auto;font-weight:600;letter-spacing:0.5px;
+  }
+  .btn-reset{
+    background:#fff;color:var(--warn);border:1.5px solid var(--warn);
+    padding:10px 16px;font-size:13.5px;font-weight:700;border-radius:999px;
+    cursor:pointer;letter-spacing:0.5px;display:flex;align-items:center;gap:6px;
+    width:fit-content;margin:0 auto 18px;
+  }
+  .btn-link{
+    background:none;border:none;color:var(--rose-deep);font-size:13px;
+    text-decoration:underline;cursor:pointer;padding:0;margin-top:10px;display:block;
+  }
+  .type-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;}
+  .type-btn{
+    border:1.5px solid var(--blush-deep);border-radius:14px;padding:14px 10px;text-align:center;
+    background:var(--ivory);cursor:pointer;font-size:14px;font-weight:600;color:var(--plum);position:relative;
+  }
+  .type-btn.selected{background:var(--rose-deep);color:#fff;border-color:var(--rose-deep);}
+  .match-badge{
+    display:inline-block;background:linear-gradient(135deg, var(--gold), var(--rose-deep));color:#fff;font-size:12px;
+    padding:4px 12px;border-radius:999px;margin-bottom:10px;font-weight:600;letter-spacing:0.5px;
+  }
+  .result-box{
+    background:var(--ivory);border:1px solid var(--line);border-radius:14px;padding:16px;
+    font-size:14.5px;line-height:1.9;white-space:pre-wrap;color:var(--ink);margin-top:14px;min-height:40px;
+  }
+  .result-box-scroll{
+    max-height:112px;overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+  }
+  .result-box-scroll-5{
+    max-height:170px;overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+  }
+  .result-head{display:flex;justify-content:space-between;align-items:center;margin-top:16px;margin-bottom:4px;}
+  .result-head span{font-size:14px;font-weight:700;color:var(--plum);}
+  .error{color:#B23A3A;font-size:13.5px;margin-top:8px;}
+  .toast{
+    position:fixed;left:50%;bottom:26px;transform:translateX(-50%);
+    background:linear-gradient(135deg, var(--rose-deep), var(--plum));color:#fff;padding:10px 22px;border-radius:999px;
+    font-size:13.5px;opacity:0;pointer-events:none;transition:opacity .25s;z-index:99;
+    box-shadow:0 8px 20px rgba(74,42,51,0.3);
+  }
+  .toast.show{opacity:1;}
+  .footnote{font-size:12px;color:var(--rose-deep);text-align:center;margin-top:6px;}
+</style>
+</head>
+<body>
+
+<div class="internal-banner">⚠️ 僅限DCT內部夥伴使用．勿直接傳給客人</div>
+
+<header>
+  <div class="kicker">DCT</div>
+  <h1>DCT自動成交系統</h1>
+  <p>一鍵複製所有諮詢．自動化分析客人需求給予建議</p>
+</header>
+
+<nav class="tabs" id="tabNav">
+  <button class="tab-btn active" data-page="page-skin-consult">美肌諮詢</button>
+  <button class="tab-btn" data-page="page-skin-intro">美肌介紹</button>
+  <button class="tab-btn" data-page="page-body-consult">纖體諮詢</button>
+  <button class="tab-btn" data-page="page-body-intro">纖體介紹</button>
+  <button class="tab-btn" data-page="page-health-intro">保健介紹</button>
+</nav>
+
+<div class="wrap">
+
+  <!-- ===== 美肌諮詢（現有功能）===== -->
+  <div class="page active" id="page-skin-consult">
+
+    <button class="btn-reset" onclick="resetSkinConsult()">🔄 清除，準備諮詢下一位客人</button>
+
+    <!-- 給客人的訊息範本 -->
+    <div class="step">
+      <div class="step-head">📋 給客人的問卷（可直接傳送）</div>
+      <div class="step-body">
+        <div class="result-head"><span>問卷內容</span><button class="btn btn-copy" onclick="copyText('client-questionnaire')">複製</button></div>
+        <div class="result-box result-box-scroll" id="client-questionnaire">嗨～很開心幫你做膚況分析🥹🤍
+
+麻煩花 1～2 分鐘填寫一下，越完整我就能分析得越準確，也比較能找到最適合你的保養方式✨
+
+1. 年齡
+＿＿＿＿＿歲
+
+2. 性別
+☐ 女　☐ 男
+
+3. 目前最困擾的肌膚問題（最多勾 3 項）
+☐ 痘痘
+☐ 粉刺
+☐ 出油
+☐ 乾燥缺水
+☐ 泛紅
+☐ 毛孔粗大
+☐ 痘印
+☐ 痘疤
+☐ 色素沉澱
+☐ 細紋
+☐ 敏感
+☐ 暗沉
+☐ 其他：__________
+
+4. 你覺得自己的膚質
+☐ 油性
+☐ 混合偏油
+☐ 混合偏乾
+☐ 中性
+☐ 乾性
+☐ 不知道🥹
+
+5. 容易長痘的位置
+☐ 額頭
+☐ 鼻子
+☐ 臉頰
+☐ 下巴
+☐ 下顎線
+☐ 沒有
+
+6. 最近是否常熬夜？
+☐ 幾乎每天
+☐ 偶爾
+☐ 幾乎沒有
+
+7. 平常有戴口罩嗎？
+☐ 經常
+☐ 偶爾
+☐ 幾乎沒有
+
+8. 平常有擦防曬嗎？
+☐ 每天
+☐ 偶爾
+☐ 幾乎沒有
+
+9. 平常容易化妝嗎？
+☐ 每天
+☐ 偶爾
+☐ 幾乎沒有</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-head">📷 給客人的拍照說明（可直接傳送）</div>
+      <div class="step-body">
+        <div class="result-head"><span>拍照說明</span><button class="btn btn-copy" onclick="copyText('client-photo-request')">複製</button></div>
+        <div class="result-box result-box-scroll" id="client-photo-request">📷 再麻煩提供幾張素顏照片🤍
+
+請拍：
+✅ 正面
+✅ 左側臉
+✅ 右側臉
+
+如果有特別在意的地方（痘痘、毛孔、斑點、泛紅等），也可以再拍一張近距離特寫🥹
+
+📍拍攝小提醒
+• 自然光最好 ☀️
+• 素顏、不開美肌、不套濾鏡
+• 如果介意露臉，眼睛打碼也沒問題，不影響分析🤍
+
+🤍 為什麼需要照片呢？
+
+有些肌膚問題光靠文字真的很難判斷🥹
+
+例如：
+✨ 是缺水還是出油？
+✨ 是泛紅還是敏感？
+✨ 是毛孔粗大、痘印還是痘疤？
+
+每一種狀況，保養搭配都會不一樣。
+有照片，我才能幫你分析得更準確，也比較不會推薦錯方向🤍
+
+🔒 請放心♡
+你的照片只會用於這次膚況分析，
+不會公開、不會分享給其他人，也不會做任何其他用途。
+
+分析完如果你希望刪除，也可以直接跟我說🥰
+
+謝謝你的信任🤍
+收到資料後，我會盡快幫你做一份專屬的膚況分析與保養建議，希望能陪你一起把皮膚養得越來越穩定、越來越漂亮✨</div>
+      </div>
+    </div>
+
+    <!-- STEP 1 問卷 -->
+    <div class="step">
+      <div class="step-head"><span class="num">1</span> 客人問卷</div>
+      <div class="step-body">
+
+        <div class="q">
+          <label class="title">性別</label>
+          <div class="opts" data-group="q_gender">
+            <div class="opt">女</div><div class="opt">男</div>
+          </div>
+        </div>
+
+        <div class="q">
+          <label class="title">你覺得自己的膚質</label>
+          <div class="opts" data-group="q_skintype">
+            <div class="opt">油性</div><div class="opt">混合偏油</div><div class="opt">混合偏乾</div>
+            <div class="opt">中性</div><div class="opt">乾性</div><div class="opt">不知道🥹</div>
+          </div>
+        </div>
+
+        <div class="q">
+          <label class="title">目前最困擾的肌膚問題（最多3項）</label>
+          <div class="opts" data-group="q_concerns" data-multi="3">
+            <div class="opt">痘痘</div><div class="opt">粉刺</div><div class="opt">出油</div>
+            <div class="opt">乾燥缺水</div><div class="opt">泛紅</div><div class="opt">毛孔粗大</div>
+            <div class="opt">痘印</div><div class="opt">痘疤</div><div class="opt">色素沉澱</div>
+            <div class="opt">細紋</div><div class="opt">敏感</div><div class="opt">暗沉</div>
+          </div>
+        </div>
+
+        <div class="q">
+          <label class="title">容易長痘的位置</label>
+          <div class="opts" data-group="q_acne_area">
+            <div class="opt">額頭</div><div class="opt">臉頰</div><div class="opt">下巴</div><div class="opt">沒有</div>
+          </div>
+        </div>
+
+        <div class="q">
+          <label class="title">最近是否常熬夜？</label>
+          <div class="opts" data-group="q_sleep">
+            <div class="opt">幾乎每天</div><div class="opt">偶爾</div><div class="opt">幾乎沒有</div>
+          </div>
+        </div>
+
+        <div class="q">
+          <label class="title">平常有戴口罩嗎？</label>
+          <div class="opts" data-group="q_mask">
+            <div class="opt">經常</div><div class="opt">偶爾</div><div class="opt">幾乎沒有</div>
+          </div>
+        </div>
+
+        <div class="q">
+          <label class="title">平常有擦防曬嗎？</label>
+          <div class="opts" data-group="q_sunscreen">
+            <div class="opt">每天</div><div class="opt">偶爾</div><div class="opt">幾乎沒有</div>
+          </div>
+        </div>
+
+        <div class="q" style="margin-bottom:0;">
+          <label class="title">平常容易化妝嗎？</label>
+          <div class="opts" data-group="q_makeup">
+            <div class="opt">每天</div><div class="opt">偶爾</div><div class="opt">幾乎沒有</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- STEP 2 產生分析 -->
+    <div class="step">
+      <div class="step-head"><span class="num">2</span> 膚況分析</div>
+      <div class="step-body">
+        <button class="btn btn-primary" id="btnAnalyze">✨ 產生膚況分析</button>
+        <div class="error" id="errorAnalyze" style="display:none;"></div>
+        <div id="analyzeResultWrap" style="display:none;">
+          <div class="result-head"><span>分析結果</span><button class="btn btn-copy" onclick="copyText('analyzeResult')">複製</button></div>
+          <div class="result-box" id="analyzeResult"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 3 產品建議＋客人回覆 -->
+    <div class="step">
+      <div class="step-head"><span class="num">3</span> 產品建議＋客人回覆</div>
+      <div class="step-body">
+        <div class="q">
+          <label class="title">膚質類型</label>
+          <span class="match-badge" id="matchBadge">依問卷判斷比較接近：中性肌</span>
+          <div class="type-grid" id="typeGrid"></div>
+          <div class="footnote">預設會依步驟1問卷自動判斷，也可以直接點選想指定的膚質類型</div>
+        </div>
+        <button class="btn btn-primary" id="btnReply">💌 產生產品建議＋客人回覆</button>
+        <div class="footnote">請先完成步驟2的膚況分析</div>
+        <div class="error" id="errorReply" style="display:none;"></div>
+        <div id="replyResultWrap" style="display:none;">
+          <div class="result-head"><span>可直接傳給客人</span><button class="btn btn-copy" onclick="copyText('replyResult')">複製</button></div>
+          <div class="result-box" id="replyResult"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ===== 美肌介紹 ===== -->
+  <div class="page" id="page-skin-intro">
+
+    <div class="step">
+      <div class="step-head">💙 水光錠</div>
+      <div class="step-body">
+        <div class="result-head"><span>產品介紹</span><button class="btn btn-copy" onclick="copyTextWithTitle('intro-water')">複製</button></div>
+        <div class="result-box result-box-scroll-5" id="intro-water">「比膠原蛋白更厲害」
+水光錠榮獲國內外10項大獎
+
+大家都知道日本的保健食品有多厲害
+水光有「五大日本專利成份」
+▪️醫美級的口服玻尿酸
+▪️日本市占第一的膠原蛋白胜肽
+吸收效果比一般膠原蛋白好很多
+讓皮膚緊緻拉提澎潤彈
+▪️美白成分真的能變白淡化黑色素暗沉
+▪️專利成分改善出油、痘痘及粉刺問題
+
+抹的保養品只能保養到臉
+「水光是由內而外全身上下都照顧到」
+連孕媽咪擔心的妊娠紋都能預防！
+
+如果長期熬夜＋易長痘痘粉刺的肌膚
+臉上最常有的問題就是暗沉、蠟黃還有粗糙
+吃水光真的讓我皮膚透亮白
+如果你不敢亂擦保養品或者皮膚很敏感 口服保養最不挑人！
+不像保養品可能會有適不適合的問題
+水光真的人人吃了都很有感
+保養只需要每天早晚三秒鐘超快
+
+認證｜連續六年榮獲世界品質標章、國家品牌玉山獎、女大粉美賞、SGS檢驗合格
+專家｜整形外科權威 周杰 醫師愛用推薦
+劑型｜膠囊劑型無腥臭味好入口
+專利｜原料取得28大專利證書、日本Hyabest專利流行鏈球菌發酵物(透明質酸鈉)、日本植物來源賽洛美、日本有機藻紅素、日本專利PO OG膠原蛋白、日本專利黃杞葉</div>
+        <div class="result-head"><span>使用方法（水光吃法）</span><button class="btn btn-copy" onclick="copyTextWithTitle('usage-water')">複製</button></div>
+        <div class="result-box result-box-scroll-5" id="usage-water">「乾肌、敏感肌」早晚各兩顆
+「混合肌、中性肌」早晚各一顆
+「油肌、痘肌、酒糟」晚一顆
+「雷射術後」一週早晚各二再依膚況調整
+
+空腹或飯後服用皆可
+記得水盡量喝到2000cc！！
+效果更快速包你滿意
+
+⭐️水光錠內添加有機藻紅素故有美白除斑效果，建議可以拍攝身體有痘疤或疤痕處記錄，服用一段時間後再來回顧會有更加明顯的差異唷！
+
+⭐️因水光在體內30分鐘吸收，有些寶寶體質比較敏感可能會出現稍微癢癢的感覺，除了多喝水外建議可以塗抹一些舒緩乳液，並且減量使用，等到狀況穩定再回到原先的劑量
+
+⭐️有在吃A酸或塗抹Ａ酸的寶寶不建議服用水光錠唷
+
+⭐️水光錠的完整療程為3-6個月，慢慢平衡調理膚況，期間需多喝水❤️並可搭配爆纖錠服用效果加倍唷
+
+⭐️剛開始服用因為代謝期關係會冒痘，如果膚況有任何的狀況可以拍照給我看唷❤️</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-head">💙 雪聚露</div>
+      <div class="step-body">
+        <div class="result-head"><span>產品介紹</span><button class="btn btn-copy" onclick="copyTextWithTitle('intro-snow')">複製</button></div>
+        <div class="result-box result-box-scroll-5" id="intro-snow">一瓶抵多瓶＝前導＋化妝水＋精華＋乳液
+對我們來說就是省錢+懶人必備+效果好
+專櫃級別的保養品 CP值超高
+連女人我最大及醫美時尚雜誌都推薦過
+
+▪️補水度佳！補充膠原蛋白！
+▪️韓國專利成份控油、除痘痘跟粉刺的效果
+減少出油真的是油肌天菜
+能夠調理肌膚的水油平衡
+▪️越用會發現皮膚越透亮穩定
+
+如果用雪聚露打底再上其他保養品
+也可以加強其他保養品的三倍吸收效果喔！💙
+
+▪️美白效果也很好
+對於痘疤或黑色素沉澱也很有幫助
+有客人拿來抹在手術傷疤
+一段時間下來疤痕淡化很多
+
+▪️敏感肌酒糟的寶寶也不用擔心
+很多客人反饋使用起來比很多專櫃保養品更好
+不容易過敏跟癢！讓皮膚快快穩定
+
+使用感受：吸收超快、不粘膩
+討厭瓶瓶罐罐油膩的男朋友也可以一起用
+大約可以用2~3個月
+
+皮膚偏乾的寶用完雪聚露只需要加一道乳液或乳霜即可
+偏油的寶單用雪聚露就很夠了
+
+乾肌、混合肌、油肌、痘痘粉刺肌、敏感肌、酒糟肌都🉑
+小孩、孕媽咪（可抹肚子）、男生（最愛懶人保養）、全家人都🉑
+
+認證｜世界品質金獎、2020女大粉美賞-濃潤水感達人獎、SGS檢驗合格
+專家｜DBAA五位皮膚科醫生評鑑認可</div>
+        <div class="result-head"><span>使用方法</span><button class="btn btn-copy" onclick="copyTextWithTitle('usage-snow')">複製</button></div>
+        <div class="result-box result-box-scroll-5" id="usage-snow">上下雙層設計搖勻後使用
+
+【一般保養】
+早晚清潔後直接使用雪聚露
+一瓶All in one多效合一
+*使用前先將雪聚露上下搖晃均勻
+倒出適量於掌心或化妝棉上
+按摩塗抹於全臉及頸部肌膚
+如想增加保溼後續可疊加小白瓶更保濕
+
+【加強保養】
+雪聚露可當前導液於保養第一道步驟使用
+
+【沉浸式保養】
+可搭配化妝棉浸潤雪聚露
+濕敷於臉部或頸部
+濕敷時間建議8-10分鐘
+1週建議濕敷2-3次
+
+【加強面膜吸收】
+敷面膜前上雪聚露
+面膜吸收效果會加倍
+
+冬天若皮膚乾燥會建議可以多上幾層雪聚露
+若容易出油的地方輕拍一層就可以囉！
+隔天皮膚會波亮！
+它會代謝掉角質
+所以前期有白色的脫屑是正常情況不用擔心❤️
+代謝後皮膚會非常好喔！
+
+⚠️敏感肌、皮膚偏乾的寶
+建議可以在雪聚露之前先上一層化妝水
+避免像夏天柏油路突然潑大量的水會太刺激喔！
+先讓皮膚喝點水就不會了
+如果肌膚缺水可以3-5滴
+
+⚠️油肌、痘痘肌、粉刺肌
+容易出油的地方別上太多層🤎
+薄薄地拍一層就可以囉
+使用一段時間會發現出油改善
+偏油肌全臉2-3滴就夠囉
+
+如果使用後有冒痘痘及粉刺
+濕敷「建議避開使用後冒出來痘痘」的部位❤️
+
+⚠️臉上有痘痘或者傷口
+傷口剛開碰到可能會有點刺
+代表傷口的修復還沒完全
+就很像我們跌倒受傷的地方碰到水
+會刺刺的是一樣的意思
+過1-2天傷口修復加速就不會囉！！
+
+㊙️記得拍全臉清楚的對比照
+才好做對比喔💪🏻💪🏻💪🏻
+臉部每天都會有變化
+拍照最能夠清楚觀察
+有任何問題都可以問我喔😻😻</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-head">💙 婕肌零</div>
+      <div class="step-body">
+        <div class="result-head"><span>產品介紹</span><button class="btn btn-copy" onclick="copyTextWithTitle('intro-cleanser')">複製</button></div>
+        <div class="result-box result-box-scroll-5" id="intro-cleanser">「洗卸合一 乾淨滑嫩」
+
+最溫和的氨基酸界面活性洗面乳
+各種膚質都可以使用！
+裡面有韓國專利成份可以去油、痘痘及粉刺
+洗完臉也不會乾澀緊繃
+
+一瓶兩用=洗臉+卸妝
+大約可以用2~3個月
+乾用可以代謝掉老廢角質+洗掉粉刺
+我最直接的感受就是皮膚會越洗越亮
+也會感覺臉上的粉刺變少皮膚變光滑
+
+如果常常化妝+本身很容易長粉刺
+清潔沒做好，皮膚就不好
+你的痘痘粉刺一直都沒改善
+也有可能是卸妝洗臉沒清乾淨！
+
+而且！我們還做了人體臨床實驗
+實驗證實可以緊緻毛孔、滋潤保濕還有控油！
+是不是超級厲害啊啊啊😻
+
+認證｜連續六年榮獲世界品質標章金獎(2021-2026)、2020年FG專家認證、SGS檢驗合格
+專家｜韓國SUNROI首席研發崔晟敦博士推薦</div>
+        <div class="result-head"><span>使用方法</span><button class="btn btn-copy" onclick="copyTextWithTitle('usage-cleanser')">複製</button></div>
+        <div class="result-box result-box-scroll-5" id="usage-cleanser">▪️洗臉：
+手沖濕+臉打溼
+按壓2下搓出泡泡後上臉打圈按摩
+每個部位3~5圈即可
+不要大力搓揉（特別鼻翼、下巴等部位）
+容易造成過度清潔：泛紅、癢、脫皮、痛等情況
+整個洗臉過程控制在「一分鐘以內」
+再用紙巾或洗臉巾按壓吸乾即可
+不要用毛巾細菌多
+
+▪️乾卸：
+手乾+臉乾
+按壓3~5下上臉搓揉
+以畫圈方式吸附彩妝
+將成團的髒污小雪球丟掉
+加水戳揉沖乾淨即可
+（卸妝後不需再次洗臉）
+就算沒化妝出門一整天也可以乾卸喔！
+會發現吸附很多臉上的髒污
+
+偏乾肌：早上可用清水洗臉
+偏油肌：建議早晚都用婕肌零
+洗臉完後30秒內上保養品
+
+也可以加水用來清洗刷具嘿嘿
+一瓶多用的！！</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-head">💙 水光繃帶面膜</div>
+      <div class="step-body">
+        <div class="result-head"><span>產品介紹</span><button class="btn btn-copy" onclick="copyTextWithTitle('intro-mask')">複製</button></div>
+        <div class="result-box result-box-scroll-5" id="intro-mask">「專櫃破萬元乳霜成分」
+
+主要成分跟專櫃一瓶1-2萬的保養品相同
+
+▪️「膠原增生、拉緊輪廓線，等同音波拉提」
+長期敷下來真的臉部線條會更緊緻！
+
+▪️添加七種玻尿酸真的保濕效果超好
+如果皮膚真的很乾燥 保濕鎖水很足夠
+
+▪️法國修復效果很強的成份
+所以對於鎮定退紅效果很好
+痘痘跟臉的泛紅敷一片就緩解很多了！
+
+▪️緩解痘痘粉刺的成分還能減少發炎
+痘痘肌也能夠使用🤍
+能加速痘痘趕快長出來趕快消炎
+使用一片真的會加速修復效果
+
+有油肌的客人反饋敷完後隔天出油量減少
+原本很容易暗沉 到了隔天皮膚還很透亮
+
+酒糟及敏感肌的很多客人幫我實測過
+敷起來都感覺退紅鎮定效果很好
+
+膜布是天絲材質很輕膚
+吸附抓水力很好不會滴🤍
+乳霜質地鎖水效果很好
+敷完後不用洗掉 按摩吸收不會黏膩
+隔天還會感覺臉很有光澤喔！
+
+重點是！這款面膜是世界金獎+全國首獎
+進過總統府接受表揚的面膜！超級厲害⋯
+
+認證｜2026世界品質標章金獎、DBAA五位皮膚科醫生評鑑認可、SGS檢驗合格、2024玉山獎全國首獎！
+材質｜天絲材質(極天然、高親膚性、溫和不刺激)</div>
+        <div class="result-head"><span>使用方式</span><button class="btn btn-copy" onclick="copyTextWithTitle('usage-mask')">複製</button></div>
+        <div class="result-box result-box-scroll-5" id="usage-mask">❶使用面膜前一定要清潔乾淨唷
+定期去角質、卸妝清潔要做好保養品才能吸收
+
+❷敷面膜前可以塗抹雪聚露當前導
+能夠增加後續保養品三倍吸收效果
+
+❸拍攝「敷前&敷後」臉部各角度照片！
+有對比照才能即時觀察效果！
+建議後鏡頭拍攝更清楚
+（給家人朋友使用也可以提醒拍照唷）
+
+❹面膜敷10-20分鐘
+敏感肌膚可由10分鐘起慢慢增加
+雷射、孕婦、哺乳媽媽、接睫毛者都可以使用
+
+❺乳霜質地敷完不需要洗掉按摩吸收即可唷！
+剩下的精華可以隔天再濕敷一次😘
+敷完後會發現粉刺冒出頭！可以趁機清掉
+痘痘也會敷化好的更快喔
+
+❻使用後隔天可以觀察膚況
+會發現一整天臉都很有光澤！效果持續48小時👍🏻
+
+『油性肌』
+一週1次，敷完肌膚已經非常滋潤保濕，「無需再塗抹保養品」
+
+『乾性肌、敏感肌』
+一週2-3次，可視敷完狀況，再評估是否塗保養品精華液或是乳霜
+
+『中性肌、混合肌、痘痘肌』
+一週1-2次，不需要每天敷唷！
+
+以上就是面膜的使用方法啦🤍
+如果有任何問題也可以問我嘿嘿
+期待寶使用後跟我分享使用感受🤍🤍🤍</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-head">💙 急救小白瓶</div>
+      <div class="step-body">
+        <div class="result-head"><span>產品介紹</span><button class="btn btn-copy" onclick="copyTextWithTitle('intro-oil')">複製</button></div>
+        <div class="result-box result-box-scroll-5" id="intro-oil">「讓肌膚乾燥起死回生」
+
+比較推薦偏乾膚質使用
+混合肌可以用在兩頰（避開出油地方）
+
+跟以往用過的油類都不一樣
+12種西班牙頂級植物油
+更好吸收不會油膩！
+從頭到腳深層修護、調理肌膚問題
+有效修護肌膚、舒緩、鎮定、增強肌膚防禦力
+法國頂級訂製又安全的療癒香氛
+
+一次達到緊俏+撫紋+修護效果！
+也可以加上護手霜用來抹肚皮預防紋路
+
+為甚麼要用油類保養呢？
+因為肌膚乾燥通常是缺水或缺油
+如果我們平時化妝水精華都有使用
+皮膚仍然感覺很乾燥
+代表肌膚也很缺乏油份！
+適當油類保養能修復肌膚屏障
+讓膚況越來越穩定喔！
+
+用過都會超喜歡！！！</div>
+        <div class="result-head"><span>多種使用方法</span><button class="btn btn-copy" onclick="copyTextWithTitle('usage-oil')">複製</button></div>
+        <div class="result-box result-box-scroll-5" id="usage-oil">💡臉部保養
+壓一下就很夠了！
+混合肌避開T字唷
+油肌不建議使用上臉
+
+❶可以在雪聚露以後使用
+❷可以跟雪聚露混合上臉 更好推開！
+❸極度乾肌使用完後可再疊擦乳霜
+
+💡油敷法
+膚況不穩&乾燥急救方法
+乾肌可以一週1-2次
+混合肌兩週1次
+
+❶洗完臉後雪聚露+小白瓶壓3下 均勻上臉
+❷直接敷面膜15分鐘
+❸拿下來後清水沖掉
+❹重新上保養品！
+
+隔天臉會非常亮！！
+非常有助於修復肌膚屏障
+
+💡身體急救保養
+當身體乾到爆！
+可以拿我們的積雪草護手霜+小白瓶
+均勻混合後推開
+你會感受到肌膚得救的感覺
+（臉部勿使用護手霜唷親）
+
+💡皮膚稍微敏感或泛紅
+直接塗抹於該部位！
+過30分後會舒緩退紅很多
+
+💡抹頭髮
+長髮壓2下 短髮壓1下
+塗抹在髮尾1/2～2/3 別抹到髮根！
+
+💡全身保養
+建議洗澡完後30分內保養
+肌膚還有水分更好推開！
+保養完後皮膚會超亮
+
+💡特殊保養看個人情況使用
+▪️按摩嘴唇👄 獲得ㄉㄨㄞㄉㄨㄞ唇
+（勿舔嘴唇及親親）
+▪️加一點進粉底液中
+（皮膚偏油、夏天不建議，可自行觀察上妝情況）
+▪️小朋友建議三歲以上再使用</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-head">💙 不一樣的護手霜</div>
+      <div class="step-body">
+        <div class="result-head"><span>產品介紹</span><button class="btn btn-copy" onclick="copyTextWithTitle('intro-hand')">複製</button></div>
+        <div class="result-box result-box-scroll-5" id="intro-hand">「西班牙植物油＋法國成分＋法國訂製調香」
+
+得到世界金牌的護手霜-積雪草護手霜
+促進膠原蛋白形成，有助傷口癒合，更具抗氧化效果
+隱形手套般長效舒緩、鎮靜、保濕、淨白、抗老
+保濕效果超好，吸收很快！不用擔心油油的
+
+▲保濕、緊緻、舒緩、修護、亮白、抗老、預防乾裂、減少脫屑
+▲全方位All in one 修護
+▲全身可塗抹，臉部除外
+▲3歲以上、孕、哺乳婦可使用</div>
+        <div class="result-head"><span>使用方法</span><button class="btn btn-copy" onclick="copyTextWithTitle('usage-hand')">複製</button></div>
+        <div class="result-box result-box-scroll-5" id="usage-hand">手跟全身任何肌膚都可以使用，臉部肌膚除外
+(不管你臉部是哪種膚質，都不可塗抹於臉部上)
+
+除了手部外，可作為身體乳塗抹於全身肌膚，深層滋潤；
+積雪草護手霜搭配小白瓶取適量擠出
+均勻混合後塗抹於全身，滋潤修護效果加倍
+
+▲想要清爽又保濕→單用小白瓶
+▲想要滋潤感明顯→單用積雪草護手霜
+▲想要極度滋潤＋快速修復→小白瓶+積雪草護手霜分別擠出適量在手上，先混合均勻後再做塗抹，效果非常好</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-head">💙 法樂蓬洗髮露</div>
+      <div class="step-body">
+        <div class="result-head"><span>產品介紹</span><button class="btn btn-copy" onclick="copyTextWithTitle('intro-shampoo')">複製</button></div>
+        <div class="result-box result-box-scroll-5" id="intro-shampoo">寶貝🥹🤍如果你也有頭皮容易出油、頭皮癢、頭皮屑、掉髮、髮根容易塌、頭髮乾燥毛躁的困擾，真的很推薦你試試這瓶！
+
+它不是一般只會把頭髮洗乾淨的洗髮精，而是一瓶從頭皮開始養髮的洗髮露✨
+
+由 台灣養髮權威醫師研發監製，通過 亞洲最大 ELLEAD® 人體臨床實驗認證，結合 9種植物萃取黃金配方＋最新胜肽養髮科技，在洗頭的同時幫助改善頭皮環境、強健髮根。
+
+很多人第一次洗就很驚訝🥹
+明明沒有潤髮，頭髮卻超柔順、不乾澀，吹完頭髮還會覺得髮根比較蓬鬆、有支撐力，真的有種在家做完高級沙龍護理的感覺✨
+
+而且木質調帶著淡淡果香，男女都很喜歡，每次洗頭都很療癒🤍</div>
+        <div class="result-head"><span>使用方法</span><button class="btn btn-copy" onclick="copyTextWithTitle('usage-shampoo')">複製</button></div>
+        <div class="result-box result-box-scroll-5" id="usage-shampoo">每天洗頭一次即可，白天或晚上都可以🥰
+
+🫧 建議每次洗兩遍
+
+第一遍
+先把頭皮上的油脂、髒污、造型品洗乾淨。
+
+第二遍
+再次按壓洗髮露，輕輕按摩頭皮約1～2分鐘，讓養髮成分充分接觸頭皮，再用清水沖洗乾淨。
+
+💡 每次建議按壓約 3～5下（依頭髮長度調整），不要為了省而按太少，效果才會更完整。
+
+如果本身是油性頭皮，連續洗兩遍幾天後仍覺得容易出油，也可以改成一次使用足夠的量（約4～6下），很多人的頭皮狀況都會改善不少🤍
+
+最後再搭配法樂蓬養髮原液，效果會更完整✨</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-head">💙 養髮原液（頭皮水）</div>
+      <div class="step-body">
+        <div class="result-head"><span>產品介紹</span><button class="btn btn-copy" onclick="copyTextWithTitle('intro-scalp')">複製</button></div>
+        <div class="result-box result-box-scroll-5" id="intro-scalp">如果洗髮露是在改善頭皮環境，那養髮原液就是幫助強健髮根、養護毛囊的重要角色🌱
+
+很多人開始注意掉髮，都是看到排水孔、吹頭髮、梳頭時頭髮越掉越多，或是分線越來越明顯、髮根越來越扁🥺
+
+法樂蓬養髮原液同樣由 台灣養髮權威醫師研發監製，搭配 最新胜肽養髮技術，並通過 亞洲最大 ELLEAD® 人體臨床實驗認證。
+
+除了幫助強健髮根、減少掉髮，也能讓髮根更有支撐力，頭髮自然看起來更蓬鬆✨
+
+很多人持續使用後，最先有感的就是：
+🤍 排水孔的頭髮變少了
+🤍 掉髮量減少
+🤍 髮根更蓬鬆
+🤍 分線看起來比較不明顯
+🤍 頭髮也變得更柔順、更有光澤
+
+養髮真的不是一天兩天，而是每天多花一分鐘，慢慢把頭皮養回健康狀態🥹🌿</div>
+        <div class="result-head"><span>使用方法</span><button class="btn btn-copy" onclick="copyTextWithTitle('usage-scalp')">複製</button></div>
+        <div class="result-box result-box-scroll-5" id="usage-scalp">🌱 基本保養
+每天洗完頭後使用一次。
+
+🌱 加強保養
+建議早、晚各使用一次。
+
+使用時先撥開頭髮，把養髮原液噴在頭皮與髮根，不是噴在頭髮上唷🤍
+
+可以從：
+✔ 中間分線 1～2下
+✔ 左右髮際線（貓咪角）各1下
+✔ 掉髮較明顯的位置加強
+
+噴完後用指腹輕輕按摩約1分鐘，幫助吸收，不需要沖洗✨
+
+可以在洗完頭微濕時使用，也可以乾髮時使用。
+
+⚠️ 如果當天沒有洗頭，就不建議直接噴養髮原液，因為頭皮保持乾淨，才能讓養分更好吸收。
+
+📸 很推薦大家第一次使用前先拍一張頭頂、分線、髮際線的照片，很多人一開始沒有每天照鏡子都感覺不到變化，但回頭對比才發現，原來頭髮真的慢慢變多、變蓬鬆了🥹🤍</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-head">🧖🏻‍♀️ 關於美肌紀錄</div>
+      <div class="step-body">
+        <div class="result-head"><span>拍照重點</span><button class="btn btn-copy" onclick="copyTextWithTitle('record-tip')">複製</button></div>
+        <div class="result-box result-box-scroll-5" id="record-tip">水光錠、雪聚露、婕肌零、小白瓶、面膜、玻尿酸：
+
+①拍照一定要用內建原相機📷
+尤其要注意的是拍照光線很重要
+不要一個白天一個晚上拍，或一個有開燈一個沒開燈，這樣說服力會降低，場景最好都是選一樣的最棒！
+
+②原相機要用外鏡頭比較清晰
+
+③雪聚露可以拍攝毛孔
+
+④小白瓶可以使用在臉、手肘、腳底、頭髮
+任何乾裂地方</div>
+      </div>
+    </div>
+
+  </div>
+  <div class="page" id="page-body-consult">
+
+    <button class="btn-reset" onclick="resetBodyConsult()">🔄 清除，準備諮詢下一位客人</button>
+
+    <div class="step">
+      <div class="step-head">📋 客人諮詢表</div>
+      <div class="step-body">
+        <div class="result-head"><span>諮詢問題</span><button class="btn btn-copy" onclick="copyText('body-consult-form')">複製</button></div>
+        <div class="result-box result-box-scroll-5" id="body-consult-form">嗨～很開心幫你做瘦身分析🥹🤎
+
+麻煩花 1～2 分鐘填寫一下，越完整我就能分析得越準確，也比較能找到最適合你的瘦身方式✨
+
+1. 年齡
+＿＿＿＿＿歲
+
+2. 目前身高／體重
+＿＿＿＿＿cm／＿＿＿＿＿kg
+
+3. 希望瘦幾公斤？
+＿＿＿＿＿ kg
+
+4. 目前最困擾的問題（可複選）
+☐ 想快速瘦身
+☐ 食量大／愛吃澱粉
+☐ 想瘦肚子／大腿
+☐ 想加速代謝燃脂
+☐ 消水腫
+☐ 便秘排便不順
+☐ 腸胃敏感怕拉肚子
+☐ 蔬果纖維不足
+☐ 愛喝飲料
+☐ 喝水量不足
+☐ 愛吃甜食想抗醣
+
+5. 平常三餐都吃什麼？
+早：
+中：
+晚：
+
+6. 排便狀況
+☐ 每天 1 次以上
+☐ 每天 1 次
+☐ 2～3 天一次
+☐ 4 天以上一次
+☐ 腸胃敏感（每週拉肚子3次以上）
+
+7. 每天喝水量
+☐ 1000cc 以下
+☐ 1000～2000cc
+☐ 2000cc 以上
+
+8. 平常有運動嗎？
+☐ 沒有
+☐ 每週 1～2 次
+☐ 每週 3 次以上
+
+9. 有沒有服用藥物或慢性疾病？
+☐ 沒有
+☐ 有：________________
+
+10. 是否使用其他瘦身產品
+☐ 無
+☐ 曾經有過，使用：________________
+☐ 現在有，使用：________________
+　　☐ 猛健樂　☐ 瘦瘦針
+
+11. 曾經試過哪些瘦身方式？效果如何？
+
+🤍 填寫完成後直接回傳給我就可以囉！
+我會依照你的生活習慣、飲食與身體狀況，幫你分析卡關原因，並提供最適合你的改善建議🥹✨</div>
+      </div>
+    </div>
+
+    <!-- STEP 1 問卷（互動式，只留下會影響產品建議的兩題） -->
+    <div class="step">
+      <div class="step-head"><span class="num">1</span> 客人問卷</div>
+      <div class="step-body">
+
+        <div class="q">
+          <label class="title">排便頻率</label>
+          <div class="opts" data-group="b_bowel_status">
+            <div class="opt">1天</div><div class="opt">2天以上</div><div class="opt">腸胃敏感（每週拉肚子3次以上）</div>
+          </div>
+        </div>
+
+        <div class="q">
+          <label class="title">是否使用其他瘦身產品</label>
+          <div class="opts" data-group="b_glp1">
+            <div class="opt">無</div>
+            <div class="opt">曾經使用過－猛健樂</div>
+            <div class="opt">曾經使用過－瘦瘦針</div>
+            <div class="opt">現在使用中－猛健樂</div>
+            <div class="opt">現在使用中－瘦瘦針</div>
+          </div>
+        </div>
+
+        <div class="q" style="margin-bottom:0;">
+          <label class="title">目前的困擾與需求（可複選）</label>
+          <div class="opts" data-group="b_goals" data-multi="99">
+            <div class="opt">想快速瘦身</div><div class="opt">食量大／愛吃澱粉</div>
+            <div class="opt">想瘦肚子大腿</div><div class="opt">想加速代謝燃脂</div>
+            <div class="opt">消水腫</div><div class="opt">經痛困擾</div>
+            <div class="opt">腸胃敏感怕拉肚子</div><div class="opt">血脂偏高</div>
+            <div class="opt">便秘排便不順</div><div class="opt">蔬果纖維攝取不足</div>
+            <div class="opt">想找代餐控熱量</div><div class="opt">愛喝飲料</div>
+            <div class="opt">喝水量不足</div><div class="opt">愛吃甜食</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- STEP 2 瘦身觀念＋產品建議（分開兩段，先瘦身觀念、再產品建議） -->
+    <div class="step">
+      <div class="step-head"><span class="num">2</span> 產品建議＋客人回覆</div>
+      <div class="step-body">
+        <button class="btn btn-primary" id="btnBodyReply">💌 產生瘦身觀念＋產品建議</button>
+        <div class="error" id="errorBodyReply" style="display:none;"></div>
+        <div id="bodyReplyResultWrap" style="display:none;">
+          <div class="result-head"><span>① 瘦身觀念（可直接傳給客人）</span><button class="btn btn-copy" onclick="copyText('bodyConceptResult')">複製</button></div>
+          <div class="result-box" id="bodyConceptResult"></div>
+          <div class="result-head"><span>② 產品建議（可直接傳給客人）</span><button class="btn btn-copy" onclick="copyText('bodyProductResult')">複製</button></div>
+          <div class="result-box" id="bodyProductResult"></div>
+          <div class="result-head"><span>③ 纖體班好康（可直接傳給客人）</span><button class="btn btn-copy" onclick="copyText('bodyClassResult')">複製</button></div>
+          <div class="result-box" id="bodyClassResult"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <div class="page" id="page-body-intro">
+
+    <h3 style="color:var(--plum);font-size:16px;margin:4px 4px 14px;">📦 產品介紹</h3>
+
+    <div class="step">
+      <div class="step-head">🩵 小綠／纖纖飲</div>
+      <div class="step-body">
+        <div class="result-head"><span>瘦身最快速明星產品</span><button class="btn btn-copy" onclick="copyTextWithTitle('body-intro-green')">複製</button></div>
+        <div class="result-box result-box-scroll-5" id="body-intro-green">「溶解身體大塊脂肪！剷除原本的肉」
+
+▪️將脂肪溶解縮小
+等同於醫美溶脂針功效
+不過是純天然植物萃取無任何藥物添加
+所以不用擔心有什麼副作用！🤣
+
+▪️減少碳水化合物的熱量吸收
+像台灣很習慣餐餐吃主食（飯、麵、粥及麵包類）
+碳水如果吃過多（每餐一顆拳頭以上）會轉為脂肪囤積
+減少澱粉及雙糖類的熱量吸收
+跟別人吃同樣的食物 熱量吸收還更少
+例如：喝小綠能減少珍奶大部分的熱量
+
+▪️易瘦體質不易復胖
+食慾變小 增加飽足感
+進食量有效減少1/3
+增加肌肉減少脂肪囤積
+提高小腹、腰圍、臀部10%熱量消耗
+
+喝起來是金桔風味 微苦回甘更有效
+可以冰在冰箱更好喝！
+飯前30分鐘來一包效果最好
+我每個包包都會丟一兩包
+每天前必須來一包才不罪惡🤣
+從2018上市到現在銷量Top1
+
+認證｜SNQ國家品質標章、世界品質標章銀獎、國家品牌玉山獎、日本體重管理市場-天才發明獎等國內外獎項
+獨家｜德國、日本、西班牙等35項原料專利
+節目｜女人我最大、玩美研究室、部落客等介紹推薦
+連續3年 榮獲世界品質標章銀獎
+
+康健雜誌營養師：婕樂纖 纖纖飲X 專利成份，可幫助調整體質，促進新陳代謝！</div>
+        <div class="result-head"><span>吃法</span><button class="btn btn-copy" onclick="copyTextWithTitle('body-usage-green')">複製</button></div>
+        <div class="result-box result-box-scroll-5" id="body-usage-green">🤍 第一次使用，建議先從 每天1包 開始🥰
+
+等身體習慣後，再依需求增加到 每天2包。
+
+建議挑一天澱粉最多、最容易吃多的一餐，「餐前喝」效果最好✨
+
+如果腸胃比較敏感，也可以改成「飯後喝」讓身體慢慢適應就可以囉💚</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-head">🩵 小粉／爆纖錠</div>
+      <div class="step-body">
+        <div class="result-head"><span>燃燒脂肪</span><button class="btn btn-copy" onclick="copyTextWithTitle('body-intro-pink')">複製</button></div>
+        <div class="result-box result-box-scroll-5" id="body-intro-pink">「加強燃脂＋讓其他產品效果開啟雙倍攻擊」
+
+▪️燃燒皮下、腹部脂肪
+富含鐵幫助造血改善經痛
+很多客人每次經痛都很嚴重 吃小粉一段時間後
+真的改善了超多！很有感
+還有天然蔓越莓能夠預防泌尿道感染
+
+▪️加速代謝，迅速燃脂
+想瘦身就要拉高代謝才能瘦得快
+抑制食慾讓你吃更少
+也減少了我一年四季手腳冰冷的狀況
+
+▪️補充很多微量營養素
+連孕媽咪、男生、老人及小孩都很需要
+營養素充足身體才有動能能夠瘦身
+如果營養素不足 身體就會自動判斷為營養不良
+這時身體會啟動自我保護機制 反而不容易瘦！
+這就是為什麼有些人明明吃得更少了反而瘦不下來的原因
+
+同時小粉能夠增加其他產品的吸收效果！
+重點是消水腫效果也很絕
+久站久坐的都懂下半身水腫的困擾
+
+爆纖錠 連續4年榮獲世界品質標章
+
+如果你想要瘦得健康氣色好
+也想要加強其他產品效果！
+小粉是必需品！開啟雙倍攻擊的概念</div>
+        <div class="result-head"><span>吃法</span><button class="btn btn-copy" onclick="copyTextWithTitle('body-usage-pink')">複製</button></div>
+        <div class="result-box result-box-scroll-5" id="body-usage-pink">🤍 可以依照自己的需求調整吃法。
+
+🌸 日常保養：一天 2次，每次 2顆
+
+🌸 加強保養：一天 2次，每次 3顆
+
+🌸 加強燃燒：一天 3次，每次 3顆
+
+✨ 餐前30分鐘吃，有助於控制食慾。
+✨ 餐後吃，則有助於穩定飲食節奏。
+
+記得每次服用至少間隔 4小時，睡前 2小時就先不要吃囉💕</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-head">🩵 酵素</div>
+      <div class="step-body">
+        <div class="result-head"><span>腸道順暢加速器</span><button class="btn btn-copy" onclick="copyTextWithTitle('body-intro-enzyme')">複製</button></div>
+        <div class="result-box result-box-scroll-5" id="body-intro-enzyme">▪️110種彩虹蔬果酵素精華，補充植物營養素
+外食的選擇雖多，卻無法兼顧飲食均衡
+久而久之可能會代謝變慢、卡卡不順。
+
+最基本的當然就是促進排便順暢
+但我們的酵素很溫和
+不會讓人一直拉肚子
+也不會吃完馬上跑廁所肚子痛
+如果便秘問題沒有解決
+身體宿便很多代表腸道內有很多毒素會釋放到全身
+這也是有些人便秘同時會伴隨皮膚不好
+或者睡眠不好的原因
+
+▪️幫助消化！改善胃脹氣！
+幫身體排毒 簡稱腸道橡皮擦🤣
+補充蔬果中的關鍵營養
+蔬果吃得少的必備
+
+如果是排便順暢類型
+大餐後都會吃一顆酵素排油排空
+隔天就會看到摁 油真的排掉了🤣
+一盒60顆 如果一天一顆可以吃兩個月很省
+
+認證｜國家品質標章SNQ、世界品質標章
+專利｜巴西久司酵素、LACRIS-S®專利益生菌、天然蔬果萃取菁華Spectra®
+獨家｜六角雙層錠劑設計，榮獲28項原料專利證書</div>
+        <div class="result-head"><span>吃法（植萃纖酵宿）</span><button class="btn btn-copy" onclick="copyTextWithTitle('body-usage-enzyme')">複製</button></div>
+        <div class="result-box result-box-scroll-5" id="body-usage-enzyme">🤍 建議 餐前30分鐘吃效果最好。
+
+空腹吃效果更強，飯後吃更溫和！
+吃完約5～8小時會想上廁所
+
+🌱 日常保養：每天 1顆
+
+🌱 加強調理：一天 2次，每次 1顆
+
+如果本身腸胃比較敏感，也可以改成 飯後吃🥰
+
+記得每天多喝水💧，幫助身體更順暢、更舒服，讓調理效果更好✨</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-head">🩵 飄飄／纖飄錠</div>
+      <div class="step-body">
+        <div class="result-head"><span>郭雪芙代言推薦</span><button class="btn btn-copy" onclick="copyTextWithTitle('body-intro-piao')">複製</button></div>
+        <div class="result-box result-box-scroll-5" id="body-intro-piao">「減少新生脂肪生成，減少長肉機會！」
+
+▪️國家認證、衛福部核准具有『不易形成體脂肪功能』效果 (健字號A00394號)
+由全球前兩%頂尖科學家領軍 林文川教授特聘指導
+
+▪️兒茶素已證實「減少脂肪吸收、增加脂肪燃燒、運動前吃可提高17%代謝」
+四顆飄飄的兒茶素含量
+等於約12杯現泡綠茶！
+眾所皆知想更苗條=少吃多動
+飮食調整相較運動沒那麼難堅持
+運動=為了提高代謝
+無法運動的寶代謝很重要！很推薦吃飄飄
+
+如果平時就有運動或喝咖啡習慣
+那吃飄飄效果更好喔！
+
+▪️纖飄錠是由頂尖科學家共同研發，日本專利完美吸收，獨家三重植萃成分，大家可以很安心的使用喔！
+
+▪️國家衛福部核准「不易形成體脂肪」&「調節血脂功效」
+擁有小綠人健字號標章，經實證平均8週有感！！！
+
+不易流汗的體質
+每次吃完飄飄都會變得容易流汗🤣
+體脂肪也持續下降中
+吃了完全不會有拉肚子的情況
+很適合腸道不好又想瘦身的寶！
+溫和有效瘦身！減少發胖機率！</div>
+        <div class="result-head"><span>吃法</span><button class="btn btn-copy" onclick="copyTextWithTitle('body-usage-piao')">複製</button></div>
+        <div class="result-box result-box-scroll-5" id="body-usage-piao">🌿 一般保養：一天 2次，每次 2顆
+
+🌿 加強代謝：一天 2次，每次 3顆
+
+建議隨餐吃效果最好！
+但如果腸胃比較敏感「飯後」吃會更舒服🤍
+
+另外也別忘了每天多喝水💧，搭配規律飲食與作息，效果會更好、更有感✨</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-head">🩵 肽纖飲</div>
+      <div class="step-body">
+        <div class="result-head"><span>控卡</span><button class="btn btn-copy" onclick="copyTextWithTitle('body-intro-peptide')">複製</button></div>
+        <div class="result-box result-box-scroll-5" id="body-intro-peptide">「一天一包養成小鳥胃」
+
+肽纖飲分成兩種口味
+可可的提高代謝及飽足感會比奶茶好一些
+奶茶中有茶褐素能降低膽固醇、燃燒體脂肪
+
+▪️控卡專利！控制熱量 減少新生脂肪
+喝完一杯就有明顯飽足感
+可以當作代餐 能搭配水、牛奶、杏仁奶、燕麥奶及豆漿等
+豐富膳食纖維飽足感佳
+如果想要更飽可以搭配吃一點蛋白質
+（例如：蛋、牛肉、雞肉等）
+通常我這樣吃完可以飽4小時以上🤣
+而且一包熱量低於100大卡糖分也很低
+（100大卡約等於一顆半水煮蛋熱量！）
+當一天中有一餐用肽肽代替
+相當於減少每日攝取的熱量大卡數
+自然就更容易變瘦囉！
+
+▪️豐富營養素人人都需要
+富含：高蛋白質、維生素ＡＢCＤＥＫ、鋅、葉酸、鈣、鐵….等
+連孕媽咪、男生、老人及小孩都很需要
+營養素充足身體才有動能能夠瘦身
+如果營養素不足 身體就會自動判斷為營養不良
+這時身體會啟動自我保護機制 反而不容易瘦！
+這就是為什麼有些人明明吃得更少了反而瘦不下來的原因
+
+▪️有許多預防掉髮、幫助生髮的成分
+頭髮少容易掉髮的必備！
+補充身體所需的能量
+很適合忙碌沒時間吃飯時喝
+
+蟹足腫體質者不建議服用
+避免傷口營養素太充足🤣
+奶茶口味乳糖不耐症者不適合服用！
+
+可可喝起來是黑巧克力的味道
+可以加豆漿或牛奶 喝起來就是可可牛奶的味道
+超好喝又很飽 完全沒有怪味
+
+奶茶是焙茶拿鐵的味道
+也有人說像烏龍奶茶
+如果喜歡喝茶類的一定會喜歡</div>
+        <div class="result-head"><span>吃法（可可／厚焙奶茶）</span><button class="btn btn-copy" onclick="copyTextWithTitle('body-usage-peptide')">複製</button></div>
+        <div class="result-box result-box-scroll-5" id="body-usage-peptide">🤎 每天 1～2包 即可。
+
+最推薦當早餐，或取代一天其中一餐✨
+
+加入 200～250cc 牛奶或無糖豆漿，攪拌均勻就很好喝🥛
+
+如果平常早餐容易忽略、外食比較多，或想控制熱量，這樣喝真的方便又有飽足感😋
+
+如果想減脂！會建議可以搭配無糖豆漿效果更好喔！
+我自己習慣300豆漿+300水！泡一杯超級飽
+也可以搭配奇亞籽很好喝😻</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-head">🩵 紫纖飲（小紫）</div>
+      <div class="step-body">
+        <div class="result-head"><span>喝水神器！蔓越莓果飲搭配飽足感白雪耳</span><button class="btn btn-copy" onclick="copyTextWithTitle('body-intro-purple')">複製</button></div>
+        <div class="result-box result-box-scroll-5" id="body-intro-purple">跟寶分享喝起來就是清淡的蔓越莓果香！
+很好喝！沒有感冒藥水味！
+白木耳搭配起來完全就是在喝飲料
+一杯不到30大卡！比半顆雞蛋熱量還低
+
+喝水每天總是喝不到2000！
+有了這個隨身帶出門 不知不覺就可以喝2000啦！
+而且讓我更想喝水了！
+
+產品本身有多厲害？有什麼效果？
+成分含有來自英國的兩大減肥專利
+減少體重和腹部脂肪、改善代謝症候群！
+「抗老抗氧化、抗糖化、預防私密處感染！！」
+
+抗糖的好處！😍
+越來越瘦！減少皮膚暗沉粗糙、膚況更好
+偷偷說比每日需求多飲用500毫升水！
+新陳代謝率可以提高30%（瘦更快多好）
+
+無痛降低食慾20%
+大餐前30分鐘補充40%餐後血糖峰值
+飽足效果可以覆蓋兩餐近14~16小時
+減少暴飲暴食機率！</div>
+        <div class="result-head"><span>食用方法</span><button class="btn btn-copy" onclick="copyTextWithTitle('body-usage-purple')">複製</button></div>
+        <div class="result-box result-box-scroll-5" id="body-usage-purple">每天可以食用一～兩次
+建議早餐跟中餐前30分鐘飲用
+每次沖泡搭配350～400 cc 冷開水
+（整天當水喝可以依個人口味沖泡更淡）
+
+建議溫水、冰水、氣泡水沖泡！
+最高溫度不超過70度
+
+✨可以搭配優格、優洛乳、檸檬原汁使用！都很好喝喔
+
+▪️極少數人初期喝可能會有頭暈、反胃
+因為雪花紫纖飲英國專利成分添加足量！
+效果更好！濃度太高時！剛開始有可能會有噁心、想吐、腸胃不適的感覺，一般來說，最多持續約3~5天左右，會開始有改善！不用擔心(⁎⁍̴̛ᴗ⁍̴̛⁎)
+
+▪️使用前可以紀錄「體態照片、體重數據、體脂」會有意外的收穫喔！！</div>
+      </div>
+    </div>
+
+    <h3 style="color:var(--plum);font-size:16px;margin:22px 4px 14px;">📖 瘦身知識與提醒</h3>
+
+    <div class="step">
+      <div class="step-head">🩵 小綠 vs 飄飄差異</div>
+      <div class="step-body">
+        <div class="result-head"><span>產品比較</span><button class="btn btn-copy" onclick="copyTextWithTitle('body-note-compare')">複製</button></div>
+        <div class="result-box result-box-scroll-5" id="body-note-compare">💙小綠：「針對溶解大塊脂肪」
+溶解脂肪、減少澱粉及雙醣類熱量吸收
+
+適合：體重及體脂高、愛大吃大喝的人，很愛吃澱粉容易不小心吃過多食物、愛吃甜食或者不健康食品
+
+💙飄飄：「減少新生脂肪生成」
+有效降低體脂肪、加速代謝增加抵抗力（很適合確診後增加抵抗力）、很適合長輩減肥（降血脂）、去濕氣消水腫
+
+適合：體重、體脂及血脂高、腸道較敏感、不喜歡小綠口味、偶爾有運動習慣的人效果更好、有喝咖啡習慣
+
+兩個家再一起1+1>2
+瘦身最需要的兩個需求「鏟肉＋不長肉！」</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-head">🩵 瘦身三階段</div>
+      <div class="step-body">
+        <div class="result-head"><span>調整期說明</span><button class="btn btn-copy" onclick="copyTextWithTitle('body-note-stage')">複製</button></div>
+        <div class="result-box result-box-scroll-5" id="body-note-stage">我們的產品大部分的人吃了都感覺
+「排便非常順暢不會不舒服」
+
+「平時飲食比較不正常or原本排便就滿順暢or腸道發炎」
+剛開始前幾天可能會出現拉肚子狀況
+不過我們不是靠拉肚子讓你瘦下來的
+
+因為身體要變瘦變健康
+體內腸道廢物一定需要清除的
+所以會有一段清理時期
+
+是調控體內荷爾蒙達到抑制食慾的效果唷！
+瘦身的調整期也是3個月唷！
+
+第1個月✨ 把身體累積過久的廢物清乾淨
+第2個月✨ 溶解脂肪 多餘脂肪排掉
+第3個月✨ 恢復身體良好代謝狀態 維持瘦身後體態
+不只會變瘦也能根本的改變體質 代謝好了 自然而然不容易變胖😁😁😁❤️
+
+因為有些人會覺得說「一盒就要馬上見效」
+一盒就會見效的減肥產品
+其實對身體很不好 馬上變瘦復胖的機率也很高
+
+健康瘦搭配飲食控制才能瘦一輩子！</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-head">🩵 瘦身小提醒</div>
+      <div class="step-body">
+        <div class="result-head"><span>注意事項</span><button class="btn btn-copy" onclick="copyTextWithTitle('body-note-tips')">複製</button></div>
+        <div class="result-box result-box-scroll-5" id="body-note-tips">1.若平常沒有服用類似產品的習慣，可能隨著體質及飲食習慣不同（若常外食/油炸/宵夜/飲食不正常）者腸胃道內的廢物可能會比較多，且產品複方有增加腸胃蠕動效果，剛開始可能會出現腹瀉/腹痛或者排便次數增加情形，建議持續搭配飲食調配，一段時間後會漸漸恢復正常唷
+
+2.體態控制需要三個月的時間，所以「減肥週期也需要三個月」，這樣體重才會開始穩定，過去經年累月的飲食習慣，使得身體傾向容易累積脂肪，所以需要給身體一段時間調整唷❤️
+
+3. 初期調整時，因為促進了腸道蠕動及身體的代謝，「有些人胃口反而變好，容易餓」，尤其是原先胃口就很好的人！
+
+使用一段時間後，搭配菜肉飯飲食、一般應能自然調降食慾✔️
+
+而飢餓感也時常因應生理時鐘或季節交替而改變。
+如果容易餓的話，正餐記得補足足夠的纖維、蛋白質和適當的油脂，較能夠延緩飢餓感👌🏻
+
+4.會建議寶寶可以拍照記錄體態！！（（必須要））
+
+測量體重、體脂、拍照、紀錄腰圍
+最佳時機 💡 早起空腹還沒吃任何東西的時候最準確
+
+建議寶拍攝自己的對比照（（必須要））
+不用傳給我看喔！只需要自己留著就好
+因為我們每天看著自己很難發現有什麼變化
+拍照更好做對比 才會發現「咦原來我腰的肉變小了」
+體重不代表一切！體態才重要！</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-head">🩵 體重迷思？</div>
+      <div class="step-body">
+        <div class="result-head"><span>觀念澄清</span><button class="btn btn-copy" onclick="copyTextWithTitle('body-note-weight')">複製</button></div>
+        <div class="result-box result-box-scroll-5" id="body-note-weight">如果不斷的注意「體重」的變化
+我們就會一直覺得自己都沒瘦
+
+「肌肉多」比較重，體積小（看起來瘦）
+「脂肪多」比較輕，體積大（看起來胖）
+「體重」可能因肌肉率、這幾天食物的鈉含量、經期前後、空腹時間、昨天吃的食物、排便次數...等上升或下降，不是絕對瘦身判斷標準
+
+看這個女生公斤數也沒變
+但因為「肌肉率上升，體脂下降」所以瘦了很多
+在瘦身過程肌肉量增加，體重會稍微上升很正常！
+千萬不能被「體重」數字綁架🤣
+
+如何判斷自己是否真的有瘦身？
+1.肌肉量 2.體脂率 3.體態照片很重要！對比可以發現肉消了
+
+我們在實施減重計畫時
+首要任務就是「降低體脂肪」
+才能有效的改善我們的體態外觀
+讓你的減肥計畫相當有感！</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-head">🩵 如果剛開始吃拉肚子？</div>
+      <div class="step-body">
+        <div class="result-head"><span>處理方式</span><button class="btn btn-copy" onclick="copyTextWithTitle('body-note-diarrhea')">複製</button></div>
+        <div class="result-box result-box-scroll-5" id="body-note-diarrhea">前幾天排便比較不成形或者拉肚子「是正常的唷」
+多數人長期失衡的飲食、體內有慢性發炎。
+
+🔺如果是輕微的：可以「先停吃酵素」，「小綠改飯後服用」，觀察幾天腸道穩定了以後再依照排便狀態，在飯後加上酵素吃
+
+🔺每個人體質與耐受度不同，如使用產品超過 5 天，發現便便太稀、水狀或肚子持續疼痛不適，代表腸道發炎較嚴重
+
+‼️請先停用 2 天讓身體有時間鎮靜、修復。（同時使用纖纖飲/纖酵素，請一起停用。）
+
+⚠️最後叮嚀，作息/壓力都會內分泌而影響代謝，請盡可能作息規律，足夠睡眠、給自己適當地紓解壓力，達到最佳效果</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-head">🩵 關於纖體紀錄</div>
+      <div class="step-body">
+        <div class="result-head"><span>拍照重點</span><button class="btn btn-copy" onclick="copyTextWithTitle('body-note-record')">複製</button></div>
+        <div class="result-box result-box-scroll-5" id="body-note-record">小綠、小粉、酵素、飄飄、可可、奶茶🥤：
+
+①拍照一定要用內建原相機📷
+尤其要注意的是拍照光線很重要
+不要一個白天一個晚上拍，或一個有開燈一個沒開燈，這樣說服力會降低，場景最好都是選一樣的最棒！
+
+②原相機要用外鏡頭比較清晰
+
+③同一套衣服最好、同一個地點跟角度
+
+④拍全身可以穿小可愛、小短褲
+最後露出最多肉的地方
+
+⑤體重計紀錄體重、體脂、皮尺測量
+腰圍、大腿圍、小腿圍
+
+🐾以上照片、影片靜態動態最好都紀錄，因為影片是最吸引眼球的唷</div>
+      </div>
+    </div>
+
+    <h3 style="color:var(--plum);font-size:16px;margin:22px 4px 14px;">🎓 纖體班</h3>
+
+    <div class="step">
+      <div class="step-head">🪧 纖體班介紹</div>
+      <div class="step-body">
+        <div class="result-head"><span>課程介紹</span><button class="btn btn-copy" onclick="copyTextWithTitle('body-class-intro')">複製</button></div>
+        <div class="result-box result-box-scroll-5" id="body-class-intro">很多人以為瘦身就是少吃、挨餓、每天吃水煮餐🥹
+其實真正瘦得健康、不容易復胖，7 分靠飲食，3 分靠運動。
+
+只要購買纖體產品，就能依照購買金額，免費參加專屬纖體班🤍
+
+———————
+
+🚀纖體陪伴班（VIP 滿 $3,840）
+
+適合剛開始減重、想建立正確飲食觀念的人✨
+
+由專業營養師透過圖文＋影片課程帶大家學習，不論是外食、便利商店、夜市、火鍋、聚餐，都會教你怎麼吃，不用節食也能瘦。
+
+你會學到：
+✔️ 正確瘦身飲食觀念
+✔️ 外食、聚餐怎麼選
+✔️ 紅綠燈餐盤搭配
+✔️ 10 種外食懶人包
+✔️ 建立不容易復胖的飲食習慣
+
+就算平常工作忙，也可以隨時補課，沒有時間壓力🥰
+
+⸻
+
+🚀 客製化纖體陪跑班（VIP 滿 $6,600）
+
+如果你希望有人每天陪著你瘦，推薦參加陪跑班✨
+
+除了包含陪伴班所有課程內容之外，最大的不同是：
+
+✅ 每天上傳三餐飲食
+✅ 營養師一對一給予飲食建議與調整
+✅ 找出瘦不下來的原因
+✅ 客製化飲食方向
+✅ 群組內即時協助，有問題都能詢問
+
+不用自己一直猜到底吃得對不對，營養師會一路陪著你調整，讓瘦身更有效率🥹
+
+⸻
+
+🎁 不論是陪伴班還是陪跑班，只要在課程期間達到指定瘦身目標，並完成課程任務與回答問題，都有機會獲得免費產品！
+
+很多客人一開始只是想減肥，但最後最大的收穫反而是學會了怎麼吃，之後不用一直節食，也比較不容易復胖🤍
+
+**這兩個課程都是專屬客人的福利，不對外販售，只要符合資格即可免費參加。**✨</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-head">🪧 纖體班為什麼一定要參加</div>
+      <div class="step-body">
+        <div class="result-head"><span>說服重點</span><button class="btn btn-copy" onclick="copyTextWithTitle('body-class-why')">複製</button></div>
+        <div class="result-box result-box-scroll-5" id="body-class-why">只要上傳你的三餐飲食
+營養師就會幫你調整飲食計畫
+「讓你輕鬆吃瘦 不餓瘦」
+打破很多人覺得瘦身一定要吃水煮雞胸肉跟燙青菜的觀念
+營養師會教你吃日料、夜市、火鍋、外食族甚至便利商店族群
+該怎麼輕鬆吃瘦不挨餓！
+
+我有些客人自己請過專業營養師打造飲食菜單
+瘦一公斤就需要支付6000塊錢
+但有認真參加纖體班的客人兩週下來平均瘦身2~4公斤
+如果請營養師需要花費24000
+同樣花3840買產品憑什麼別人兩週多瘦2-4公斤！
+免費的課程 還能多瘦好幾公斤誰不要🤣
+參加就賺到真的很佛心也很划算
+這個課程只給專屬客人 不對外販售</div>
+      </div>
+    </div>
+
+  </div>
+  <div class="page" id="page-health-intro">
+
+    <div class="step">
+      <div class="step-head">🩵 葉黃素</div>
+      <div class="step-body">
+        <div class="result-head"><span>產品介紹</span><button class="btn btn-copy" onclick="copyTextWithTitle('health-intro-lutein')">複製</button></div>
+        <div class="result-box result-box-scroll-5" id="health-intro-lutein">現代人常常滑手機3C不離身
+甚至工作需要常常用眼
+小朋友吃飯也都抱著平板
+長輩視力開始模糊
+真的很需要葉黃素！
+
+複方型+液態葉黃素吸收效果最好
+喝了一包30分鐘立即有感血絲減少
+
+如果有眼睛乾澀、酸、眼壓高、血絲多
+越晚視力越模糊都代表眼睛很需要保護囉！
+很多人有乾眼症（年少輕狂不懂事亂戴隱眼）
+導致現在很常眼睛酸澀眼壓高
+喝了兩包葉黃素以後都會好很多
+
+有抗藍光及改善眼周熬夜導致的黑眼圈的成分！
+諾貝爾集團院長張朝凱醫師推薦！
+
+喝起來是濃葡萄汁的味道
+冰冷藏或冷凍都很好喝！</div>
+        <div class="result-head"><span>使用方法</span><button class="btn btn-copy" onclick="copyTextWithTitle('health-usage-lutein')">複製</button></div>
+        <div class="result-box result-box-scroll-5" id="health-usage-lutein">濃葡萄風味，液態劑型好吸收
+12包／盒，約6～12天份
+
+🏷️ 適合人群
+・低頭族
+・學生
+・長時間使用3C者
+・眼睛乾燥者
+・雷射術後保養
+
+📝 用法
+・成人日常保養：每日1包
+・加強保養：每日2包
+・3～12歲孩童：建議減半食用
+
+可直接飲用，也可冰鎮後飲用。
+
+💡 提醒
+♡ 任何時間皆可飲用。婕樂纖葉黃素採液態劑型，經實測吸收效果更佳，因此沒有飲用時間限制。
+♡ 初次使用或長時間使用3C、用眼較多者，建議前兩週每天2次、每次1包作為加強保養；之後維持每日1包即可。
+♡ 生理期間原則上可以飲用，但少數人若有經血量較多或經期不適等情況，可依身體狀況暫停使用，待經期結束後再恢復補充。</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-head">🩵 益生菌</div>
+      <div class="step-body">
+        <div class="result-head"><span>產品介紹</span><button class="btn btn-copy" onclick="copyTextWithTitle('health-intro-probiotic')">複製</button></div>
+        <div class="result-box result-box-scroll-5" id="health-intro-probiotic">我們的益生菌功效超多：
+維持腸道健康
+改善過敏
+提高免疫力降低發炎
+有助於改善嬰童生病
+讓皮膚更健康減少過敏情形
+孕媽咪補充益生菌減少過敏兒
+
+連續保養一到兩週就很有感囉
+大人小孩都很需要的保養
+我沒有過敏的困擾
+但會每天補充益生菌增加免疫力也讓皮膚更好
+當膚況不穩發炎時吃益生菌效果超明顯！
+
+有朋友腸道很敏感
+吃益生菌以後改善很多不會一直腹瀉
+
+有很多客人是買給小北鼻吃的
+現在很多小北鼻都是過敏兒或者皮膚炎濕疹
+吃益生菌幾個月後整體狀況真的差很多！</div>
+        <div class="result-head"><span>使用方法</span><button class="btn btn-copy" onclick="copyTextWithTitle('health-usage-probiotic')">複製</button></div>
+        <div class="result-box result-box-scroll-5" id="health-usage-probiotic">使用天然青蘋果果汁調味
+（吃起來像多多）
+30包／盒，約7～15天份
+
+🏷️ 適合人群
+・四個月以上嬰幼兒
+・過敏族群
+・免疫力較差者
+・腸道敏感者
+・日常保養
+
+📝 用法
+・4個月大嬰兒～1歲以下孩童：每日半包
+・1～12歲以下孩童：每日1包
+・12歲以上成人：每天2包
+・加強補充／懷孕、哺乳婦女：每天3～4包
+
+可直接倒入口中，或搭配溫水／冷水使用（45°C以下）。
+
+💡 提醒
+♡ 婕樂纖高機能益生菌選用優質專利菌種，耐胃酸、耐膽鹼，任何時間皆可食用，更建議空腹或睡前補充。實驗證實90%以上好菌可抵達並定殖於腸道。
+♡ 初期調理約1～2週即可開始有感；若希望全面調整體質，建議持續補充至少3～6個月。
+♡ 含有奶素成分，發酵過程已完成代謝，素食者可依自身需求評估是否食用。</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-head">🩵 酒國英雄</div>
+      <div class="step-body">
+        <div class="result-head"><span>產品介紹</span><button class="btn btn-copy" onclick="copyTextWithTitle('health-intro-hangover')">複製</button></div>
+        <div class="result-box result-box-scroll-5" id="health-intro-hangover">字面上意思能夠改善宿醉、減輕酒癮
+全台唯一專一性解酒酵素！
+抑制過多的酒精吸收
+也能夠幫助肝臟排毒代謝
+減少酒精熱量吸收喝酒怕胖必備
+如果體內解酒酵素不足容易臉紅起酒疹的很需要
+
+有在喝酒的朋友回購都是三包三包🤣
+反饋都是不容易醉
+就算喝太多也不會嚴重宿醉
+速效！服用後10~15分鐘立即有感
+
+添加中醫護肝配方
+熬夜或睡眠不足的很需要
+每次熬夜後我都會吃兩顆
+會減輕一整天疲累感
+不像吃B群的提神是很累但睡不著
+酒國的提神是減輕疲累感！
+真的是熬夜還有輪班的好朋友</div>
+        <div class="result-head"><span>使用方法</span><button class="btn btn-copy" onclick="copyTextWithTitle('health-usage-hangover')">複製</button></div>
+        <div class="result-box result-box-scroll-5" id="health-usage-hangover">經過客人實測⭕️
+
+🍻吃法
+（可參考，需依照自己身體狀況隨時補充即可）
+
+❶只喝啤酒：酒前、中、後各2顆
+❷只喝厚酒：酒前、中、後各2顆
+❸混酒：酒前、中、後各3顆（茅起來吃就對了，除非你想頭痛）
+
+————————————
+▪️以上僅供參考▪️
+
+大原則就是：
+開始茫的時候趕緊補2顆
+吐完補2顆
+隔天起床不舒服補2顆</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-head">🩵 療肺草正冠茶</div>
+      <div class="step-body">
+        <div class="result-head"><span>產品介紹</span><button class="btn btn-copy" onclick="copyTextWithTitle('health-intro-lung')">複製</button></div>
+        <div class="result-box result-box-scroll-5" id="health-intro-lung">是專一性針對上呼吸道的產品
+尤其確診前後之對象，需要提高防護力的人
+
+產品主要是強化上呼吸道防護，提高體内的免疫力及細胞攜氧量等三大功能，所以對於目前疫情的症狀或是長新冠的後遺症，都有相當幫助
+對於流性病感冒、空氣汙染、老煙槍喉嚨不適、卡痰問題也能迎刃而解！
+
+裡面的成份是以台灣國家中醫所防疫茶為配方基底，14種草本+維他命C配方調製而成，屬於食品來源不是藥品唷
+
+像我也是確證過的人，後遺症滿嚴重光咳嗽就咳了一個月，也是喝了正冠茶慢慢好的😆
+
+除了後遺症之外
+▲經常唱KTV的豪邁對象
+▲久咳未止困擾的對象
+▲經常用喉嚨的職業，舉例：演講家、youtuber
+▲可以當日常保養喝 避免感冒
+
+喝起來的味道接近羅漢果、枇杷膏、薄荷的感覺
+喝起來微涼回甘微甜 完全不會苦
+聞起來有中藥味 但喝起來完全沒有
+喝進喉嚨很舒服 感覺很順暢🤣很難形容！
+真的是即時就有感的</div>
+        <div class="result-head"><span>泡法</span><button class="btn btn-copy" onclick="copyTextWithTitle('health-usage-lung')">複製</button></div>
+        <div class="result-box result-box-scroll-5" id="health-usage-lung">🌝日常補給：每天一包，搭配250-300cc溫開水沖泡
+
+🌚確診期間：以清冠一號為主，搭配療肺草正冠茶，每天一~二包，間隔兩小時使用
+
+🌖確診後：建議連續14天，每天兩次，每次一包，搭配150cc溫開水沖泡；結束後，改為每天一包
+
+🌘老煙槍：每天一~二包，搭配250cc溫開水沖
+
+▫️5歲以上之幼兒，半包開始使用
+▫️孕婦，生理期，以及有慢性疾病、腎功能不佳者，請從半包開始使用</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-head">🩵 固樂纖</div>
+      <div class="step-body">
+        <div class="result-head"><span>產品介紹</span><button class="btn btn-copy" onclick="copyTextWithTitle('health-intro-joint')">複製</button></div>
+        <div class="result-box result-box-scroll-5" id="health-intro-joint">是天然植物萃取產品唷
+
+主要成份有
+❶以百年傅統中醫食療一龜鹿二仙膠為基礎！！
+❷我們家婕樂纖骨關節的『獨家成分DKKflex™』
+❸結合超過200％葡萄糖胺效果的專利UCI
+實證有效軟骨增生的蛋白聚醣(鮭魚鼻軟骨萃取）
+
+三個關鍵成份，讓筋骨更高活絡 👏🏻👏🏻👏🏻
+
+上市前超過200個人測試
+面對關節間題，都能有效幫助！ 👍</div>
+        <div class="result-head"><span>使用方法</span><button class="btn btn-copy" onclick="copyTextWithTitle('health-usage-joint')">複製</button></div>
+        <div class="result-box result-box-scroll-5" id="health-usage-joint">▪️一般保養
+早上空腹3顆/一天一次
+
+▪️初期或者加強保養
+症狀比較嚴重者可以前期使用加強吃法
+每天補充4～6顆持續7-10天（分兩個時段使用）
+再調整為一般吃法3顆
+
+前幾天酸麻是正常的唷！
+是將深層發炎物質代謝出來
+請繼續持續使用！
+
+如果腸胃不好者可以改成飯後食用喔！
+
+可以搭配我們家其他產品一起吃是沒問題的，跟中藥隔兩個小時吃就可以了 💓</div>
+      </div>
+    </div>
+
+  </div>
+
+
+</div>
+
+<div class="toast" id="toast">已複製 🤍</div>
+
+<script>
+// ================= 分頁切換 =================
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.page).classList.add('active');
+  });
+});
+
+// ================= state =================
+const state = {
+  q_gender:null, q_skintype:null, q_concerns:[], q_acne_area:null,
+  q_sleep:null, q_mask:null, q_sunscreen:null, q_makeup:null,
+  analyzeText:"", selectedType:null, manualOverride:false,
+  observations:[], causesArr:[], topIssues:[], habits:[], keywords:[],
+  b_bowel_status:null, b_glp1:null, b_goals:[]
+};
+
+// ================= option groups =================
+document.querySelectorAll('.opts').forEach(group=>{
+  const key = group.dataset.group;
+  const multi = group.dataset.multi;
+  if(!key || !(key in state)) return;
+  group.querySelectorAll('.opt').forEach(opt=>{
+    opt.addEventListener('click', ()=>{
+      if(multi){
+        const max = parseInt(multi);
+        const val = opt.textContent;
+        const idx = state[key].indexOf(val);
+        if(idx>-1){
+          state[key].splice(idx,1);
+          opt.classList.remove('selected');
+        } else {
+          if(state[key].length>=max){
+            const firstSelected = group.querySelector('.opt.selected');
+            if(firstSelected){
+              firstSelected.classList.remove('selected');
+              state[key].shift();
+            }
+          }
+          state[key].push(val);
+          opt.classList.add('selected');
+        }
+      } else {
+        group.querySelectorAll('.opt').forEach(o=>o.classList.remove('selected'));
+        opt.classList.add('selected');
+        state[key] = opt.textContent;
+      }
+      if(key.startsWith('b_')){
+        bodyRefreshOutputs();
+      } else {
+        state.manualOverride = false;
+        refreshOutputs();
+      }
+    });
+  });
+});
+
+// ================= 依步驟1問卷自動判斷膚質類型 =================
+function computeType(){
+  const c = state.q_concerns;
+  if(c.includes('敏感')) return "敏感肌";
+  if(c.includes('細紋') && !c.includes('出油') && !c.includes('乾燥缺水')) return "鬆弛肌";
+
+  const st = state.q_skintype;
+  if(st && st!=="不知道🥹"){
+    const map = {"油性":"油性肌","混合偏油":"混合肌","混合偏乾":"混合肌","中性":"中性肌","乾性":"乾性肌"};
+    if(map[st]) return map[st];
+  }
+
+  const oily = c.includes('出油') || c.includes('痘痘') || c.includes('粉刺') || c.includes('毛孔粗大');
+  const dry = c.includes('乾燥缺水');
+  if(oily && dry) return "混合肌";
+  if(dry) return "乾性肌";
+  if(oily) return "油性肌";
+  return "中性肌";
+}
+
+// ================= 6 膚質類型與產品搭配（依產品搭配表說法撰寫，不提成分名稱，說明原因與能解決的問題）=================
+const TYPES = {
+  "油性肌": {
+    label:"油性肌",
+    intro:"全臉都容易出油，常常還沒出門就開始泛油光，也比較容易有痘痘、粉刺、毛孔粗大的狀況🥹",
+    combo:[
+      ["水光錠","從內部改善出油的根源，同時提亮偏蠟黃暗沉的膚色，這是因為出油長痘的根本原因常常是身體缺水，皮脂腺才會過度分泌油脂來自我保護，所以要從內部先把水分補足"],
+      ["婕肌零","控油、卸妝、抗粉刺三合一，洗卸的同時清潔乾淨又不會越洗越乾，避免刺激皮脂腺分泌更多油"],
+      ["雪聚露","質地清爽不油膩，能有效減少油脂分泌，很適合油性肌天天使用不會有負擔"],
+      ["玻尿酸","補水不補油，直接補進膚況真正缺的水分，讓皮脂腺不用再過度出油來代償"],
+      ["面膜","加強修復痘痘、消炎，油痘肌反覆長痘的地方可以加強鎮定"],
+      ["小白瓶","是美容油，如果身體肌膚或頭髮覺得乾燥，可以拿來加強抹，臉部出油歸出油，身體跟頭髮乾燥時一樣可以用"]
+    ],
+    closing:"先把油脂分泌穩定下來，粉刺痘痘的狀況通常會跟著慢慢改善，不用心急🤍"
+  },
+  "混合肌": {
+    label:"混合肌",
+    intro:"T字部位容易出油，兩頰卻又比較缺水乾燥，保養起來常常抓不到平衡，很怕分區保養太麻煩🥹",
+    combo:[
+      ["水光錠","調理油水平衡，混合肌的根源問題就是油水不平衡，身體缺水才讓T字代償性出油，兩頰又因為缺水乾燥，其實是同一個問題的兩種表現，從內部調理才能一次處理好"],
+      ["婕肌零","改善T字容易出油、長粉刺的問題，溫和洗卸不會讓兩頰更加乾燥"],
+      ["雪聚露","一罐保養就好，減少T字油脂分泌，同時又能幫兩頰補水，省去分區保養的麻煩"],
+      ["玻尿酸","補水不補油，鎖住水分，專門加強兩頰比較缺水的部位"],
+      ["面膜","週期性維穩鎮定，讓混合肌整體油水狀況更穩定"],
+      ["小白瓶","是美容油，身體肌膚或頭髮如果也覺得乾燥缺水，可以拿來加強抹，跟臉部保養一起顧到全身"]
+    ],
+    closing:"先把油水平衡顧好，記得避免清潔過度，很多小問題通常會一起改善🤍"
+  },
+  "中性肌": {
+    label:"中性肌",
+    intro:"膚況其實蠻穩定的，肌膚紋理細緻、有彈性、光澤度也不錯，不過換季的時候還是容易受影響😊",
+    combo:[
+      ["玻尿酸","基礎保濕鎖水，維持肌膚原本的穩定狀態，不需要額外太多負擔"],
+      ["水光錠","從內部維持油水平衡，讓膚況在換季時也不容易被打亂"],
+      ["面膜","定期保養、補水抗老，不用天天敷，適合維持型保養"],
+      ["雪聚露","換季前後可以加強使用，補強保濕力，避免溫差大造成的乾燥或出油"],
+      ["小白瓶","是美容油，換季時如果身體肌膚或頭髮也覺得比較乾，可以拿來加強保養"],
+      ["婕肌零","溫和清潔，不會過度洗掉油脂，維持膚況原本的平衡"]
+    ],
+    closing:"維持現在的保養習慣就好，換季前後再加強一點保濕跟鎖水，不用大幅調整🤍"
+  },
+  "敏感肌": {
+    label:"敏感肌",
+    intro:"皮膚比較薄，換保養品容易紅、癢，偶爾還會有脫屑的狀況，這種反覆敏感真的很辛苦🥹",
+    combo:[
+      ["水光錠","由內穩定敏感，全身性由內而外保養，能比較快讓膚況穩定，不用一直冒著刺痛風險嘗試外用產品"],
+      ["婕肌零","質地極溫和不刺激，敏感肌也能放心用，能減少洗完臉之後的泛紅"],
+      ["玻尿酸","溫和打底，修復受損的皮膚屏障，先把根本的屏障問題顧好，之後比較不容易因為外界刺激就爆發"],
+      ["面膜","修復屏障、鎮定泛紅的溫和成分，敏感當下也可以安心敷"],
+      ["小白瓶","是美容油，如果身體肌膚也有乾癢不適的狀況，可以拿來加強保養身體"],
+      ["雪聚露","等膚況穩定後再加入，用來維持長期的穩定，不用一直反覆發作"]
+    ],
+    closing:"保養上盡量選溫和、減少刺激的產品，先讓肌膚穩定下來，我們一起慢慢調整🤍"
+  },
+  "乾性肌": {
+    label:"乾性肌",
+    intro:"臉頰容易有脫屑的現象，摸起來比較沒有光澤，擦了不少保養品還是覺得不夠水潤😊",
+    combo:[
+      ["水光錠","從內部由內而外補水，乾肌的根源問題是皮膚鎖水能力弱、細胞含水量不足，外擦再多水分也容易蒸發流失，所以要從內部先把細胞的含水量補起來"],
+      ["婕肌零","溫和洗卸，用對了洗完也不會緊繃，不會破壞皮膚原本的油脂層"],
+      ["面膜","快速補水、抗老緊緻，細紋暗沉的狀況可以搭配使用來加強"],
+      ["雪聚露","補水力比一般保養更強，能明顯感覺到乾燥緊繃的狀況有改善"],
+      ["玻尿酸","外用加強重點乾燥部位的保濕，兩頰特別乾的地方可以局部加強"],
+      ["小白瓶","是美容油，臉部保濕之外，身體肌膚或頭髮乾燥的時候也可以拿來加強抹，鎖住水分"]
+    ],
+    closing:"先選長效保濕的產品，把保濕基礎打穩，膚況會慢慢有感覺，光澤也會跟著回來🤍"
+  },
+  "鬆弛肌": {
+    label:"鬆弛肌",
+    intro:"肌膚角質層開始缺乏彈性，摸起來比較沒有Q彈感，膠原蛋白流失的速度也會比較快🥹",
+    combo:[
+      ["雪聚露","補水抗老效果很不錯，能同時幫肌膚補水又提升緊緻感，改善細紋跟鬆弛的狀況"],
+      ["玻尿酸","加強保濕，提升水感彈潤度，肌膚含水量夠，彈性才會跟著回來"],
+      ["水光錠","由內而外補充彈性，從身體內部延緩膠原蛋白流失的速度"],
+      ["面膜","密集抗老修護，針對鬆弛、細紋的部位可以加強敷"],
+      ["小白瓶","是美容油，身體肌膚如果也有乾燥、缺乏彈性的狀況，可以拿來加強保養"],
+      ["婕肌零","溫和清潔，不流失多餘油脂，避免清潔過度加速老化"]
+    ],
+    closing:"平常記得攝取足量水份跟蔬果，加強補充膠原蛋白及玻尿酸，肌膚彈性會慢慢回來🤍"
+  }
+};
+
+const typeGrid = document.getElementById('typeGrid');
+Object.keys(TYPES).forEach(key=>{
+  const btn = document.createElement('div');
+  btn.className='type-btn';
+  btn.textContent = TYPES[key].label;
+  btn.dataset.key = key;
+  btn.addEventListener('click', ()=>{ selectType(key, true); refreshOutputs(); });
+  typeGrid.appendChild(btn);
+});
+
+function selectType(key, manual){
+  state.selectedType = key;
+  state.manualOverride = !!manual;
+  document.querySelectorAll('.type-btn').forEach(b=>{
+    b.classList.toggle('selected', b.dataset.key===key);
+  });
+  const badge = document.getElementById('matchBadge');
+  if(badge) badge.textContent = manual ? "已手動選擇：" + TYPES[key].label : "依問卷判斷比較接近：" + TYPES[key].label;
+}
+// 頁面載入時先顯示預設判斷結果
+selectType(computeType(), false);
+
+// ================= 問卷選項 → 分支內容對照表 =================
+const CONCERN_MAP = {
+  "痘痘":     {obs:"臉上有幾顆比較明顯的痘痘", keyword:"抗痘"},
+  "粉刺":     {obs:"T字或臉頰有粉刺的狀況", keyword:"淨化毛孔"},
+  "出油":     {obs:"出油狀況比較明顯，尤其T字部位", keyword:"控油"},
+  "乾燥缺水": {obs:"肌膚摸起來比較乾，缺水感偏明顯", keyword:"保濕"},
+  "泛紅":     {obs:"有些部位看起來比較泛紅", keyword:"舒緩泛紅"},
+  "毛孔粗大": {obs:"毛孔看起來比較明顯", keyword:"毛孔緊緻"},
+  "痘印":     {obs:"留下了一些痘痘消退後的痘印", keyword:"淡痘印"},
+  "痘疤":     {obs:"有些地方留下痘疤的痕跡", keyword:"修復痘疤"},
+  "色素沉澱": {obs:"膚色不太均勻，有色素沉澱的狀況", keyword:"提亮均勻"},
+  "細紋":     {obs:"眼周或嘴角有一些細紋", keyword:"抗老緊緻"},
+  "敏感":     {obs:"肌膚比較容易敏感、不太穩定", keyword:"舒敏修護"},
+  "暗沉":     {obs:"整體氣色偏暗沉", keyword:"提亮"}
+};
+
+// 痘痘位置對應原因（已簡化，只保留這三個部位）
+const AREA_MAP = {
+  "額頭": {cause:"額頭長痘比較常跟壓力大，或瀏海長期遮擋悶熱有關", habit:"作息｜留意瀏海是否常常遮住額頭，並留意生活壓力"},
+  "臉頰": {cause:"臉頰長痘比較常跟枕頭套太久沒更換有關", habit:"清潔｜枕頭套建議勤更換，避免細菌孳生"},
+  "下巴": {cause:"下巴長痘比較常跟婦科方面的狀況或壓力有關", habit:"作息｜建議多留意經期、婦科方面的狀況，並留意壓力調節"},
+  "沒有": null
+};
+
+const SLEEP_MAP = {
+  "幾乎每天":{cause:"最近比較常熬夜，肌膚修復的時間不太夠，狀況容易不穩定", habit:"睡眠｜盡量讓自己早一點休息，皮膚在睡眠時修復效果最好"},
+  "偶爾":{cause:"偶爾熬夜，對肌膚多少還是有些影響", habit:"睡眠｜熬夜隔天可以加強保濕跟舒緩"},
+  "幾乎沒有":null
+};
+
+const MASK_MAP = {
+  "經常":{cause:"經常戴口罩，悶熱摩擦讓下半臉比較容易出油、長痘或悶粉刺", habit:"口罩｜悶熱的時候可以適時透氣，減少悶著的時間"},
+  "偶爾":{cause:"偶爾戴口罩，悶熱狀況比較沒那麼頻繁", habit:null},
+  "幾乎沒有":null
+};
+
+const SUN_MAP = {
+  "每天":null,
+  "偶爾":{cause:"防曬做得不太固定，暗沉或色素不均可能會更明顯", habit:"防曬｜建議盡量每天擦，減少紫外線造成的暗沉與老化"},
+  "幾乎沒有":{cause:"防曬幾乎沒有做，紫外線累積也是暗沉、老化的原因之一", habit:"防曬｜建議至少白天出門前擦一次，是保養中很重要的一步"}
+};
+
+const MAKEUP_MAP = {
+  "每天":{cause:"經常化妝，卸妝如果沒有徹底，容易讓毛孔悶住", habit:"卸妝｜化妝的日子記得加強卸妝，避免殘留悶住毛孔"},
+  "偶爾":null,
+  "幾乎沒有":null
+};
+
+// ================= 產生膚況分析（純本地規則，不呼叫API，避免重複字詞）=================
+function generateAnalysis(){
+  const observations = [];
+  const keywords = [];
+  const topIssues = [];
+  const causes = [];
+  const habits = [];
+
+  state.q_concerns.forEach(c=>{
+    const m = CONCERN_MAP[c];
+    if(m){
+      observations.push(m.obs);
+      keywords.push(m.keyword);
+      topIssues.push(`${c}－${m.obs}`);
+    }
+  });
+
+  const areaInfo = state.q_acne_area ? AREA_MAP[state.q_acne_area] : null;
+  if(areaInfo){
+    causes.push(areaInfo.cause);
+    if(areaInfo.habit) habits.push(areaInfo.habit);
+  }
+
+  [SLEEP_MAP[state.q_sleep], MASK_MAP[state.q_mask], SUN_MAP[state.q_sunscreen], MAKEUP_MAP[state.q_makeup]].forEach(m=>{
+    if(m){
+      if(m.cause) causes.push(m.cause);
+      if(m.habit) habits.push(m.habit);
+    }
+  });
+
+  if(observations.length===0) observations.push("目前問卷資訊還比較少，建議之後補充更多細節，分析會更準確");
+  if(topIssues.length===0) topIssues.push("目前沒有勾選特別困擾的問題，膚況大致穩定");
+  if(causes.length===0) causes.push("目前生活習慣看起來影響不大，膚況變化可能跟季節或保養品使用有關");
+  if(habits.length===0) habits.push("目前生活習慣大致良好，維持現有節奏即可");
+
+  const causeStarters = ["比較傾向", "同時也有可能", "另外也有可能", "也不排除"];
+  const causeText = causes.map((c,i)=> (causeStarters[i] || "也可能") + c).join("，") + "。";
+
+  const adviceIssue = state.q_concerns[0] ? CONCERN_MAP[state.q_concerns[0]] : null;
+  const adviceLine = adviceIssue
+    ? `我會比較建議先從「${adviceIssue.keyword}」下手🥹\n把最困擾的地方顧好，其他狀況通常也會跟著慢慢改善。\n不用一次換太多保養品，先把基礎穩定下來比較重要。`
+    : `我會比較建議先把基礎保濕跟清潔顧好🥹\n把底子養穩了，之後不管加什麼保養都會更有效果。\n慢慢調整就好，不用心急。`;
+
+  const uniqueKeywords = [...new Set(keywords)];
+  if(uniqueKeywords.length===0) uniqueKeywords.push("保濕", "強化肌膚屏障");
+
+  state.observations = observations;
+  state.causesArr = causes;
+  state.topIssues = topIssues;
+  state.habits = habits;
+  state.keywords = uniqueKeywords;
+
+  const text =
+`⭐ 目前比較需要留意的問題
+${topIssues.map((t,i)=>`${["①","②","③","④","⑤"][i]||"•"} ${t}`).join("\n")}
+
+🧩 我推測可能的原因
+${causeText}
+
+🌿 建議優先改善的生活習慣
+${habits.join("\n")}
+
+🤍 我想給你的建議
+${adviceLine}
+
+💛 
+整體看下來，膚況底子其實不錯🤍
+目前比較像是保養方向還沒完全抓對。
+只要把生活習慣跟保養慢慢調整，我相信膚況會越來越穩定，也不用太給自己壓力🥰
+
+🔍 保養需求關鍵字
+${uniqueKeywords.map(k=>"✅ "+k).join("\n")}`;
+
+  return text;
+}
+
+function runAnalyze(){
+  const text = generateAnalysis();
+  state.analyzeText = text;
+  document.getElementById('analyzeResult').textContent = text;
+  document.getElementById('analyzeResultWrap').style.display='block';
+}
+document.getElementById('btnAnalyze').addEventListener('click', runAnalyze);
+
+// ================= 產生「產品建議＋客人回覆」（本地組合，不呼叫API）=================
+function runReply(){
+  const errBox = document.getElementById('errorReply');
+  errBox.style.display='none';
+
+  if(!state.analyzeText){
+    errBox.textContent = "請先完成步驟2的膚況分析";
+    errBox.style.display='block';
+    return;
+  }
+  if(!state.selectedType || !state.manualOverride){
+    selectType(computeType(), false);
+  }
+
+  const t = TYPES[state.selectedType];
+  const issueNames = state.q_concerns.length ? state.q_concerns.join("、") : "膚況";
+  const connectors = ["我會先建議加入","接著可以搭配","同時也很適合加上","另外還有","如果想再加強一點，也可以加上","最後別忘了加上"];
+  const productLines = t.combo.map(([name, reason], i)=>
+    `${connectors[i % connectors.length]}「${name}」，${reason}。`
+  ).join("\n\n");
+
+  const text =
+`嗨～謝謝你耐心填問卷🤍 我把你的膚況整理一下了：
+
+我有觀察到${state.observations.join("、")}，這種狀況其實不少人也會遇到，不用太緊張🥹
+
+依照你的問卷內容，你比較偏向「${t.label}」。${t.intro}
+
+針對你比較困擾的「${issueNames}」，會建議這樣搭配：
+
+${productLines}
+
+${t.closing}
+
+整體來說底子不錯，慢慢調整、不用心急，我陪你一起穩定膚況😊`;
+
+  document.getElementById('replyResult').textContent = text;
+  document.getElementById('replyResultWrap').style.display='block';
+}
+document.getElementById('btnReply').addEventListener('click', runReply);
+
+// 重新選擇步驟1的內容時，若下方已經產生過分析／回覆，就自動重新整理
+function refreshOutputs(){
+  if(!state.manualOverride){
+    selectType(computeType(), false);
+  }
+  if(state.analyzeText){
+    runAnalyze();
+  }
+  if(document.getElementById('replyResultWrap').style.display === 'block'){
+    runReply();
+  }
+}
+
+// ================= 纖體諮詢：問卷 → 產品建議＋客人回覆（瘦身觀念穿插中間，最後才是產品）=================
+const bodyState = {};
+
+const BODY_PRODUCTS = {
+  green:    {label:"小綠／纖纖飲", desc:"能加速溶解身體大塊脂肪，效果類似溶脂針的概念，同時減少澱粉和雙醣類的熱量吸收", qtyNote:"建議至少準備2盒才能吃滿一個月，只吃半個月效果比較不明顯"},
+  pink:     {label:"小粉／爆纖錠", desc:"能加速代謝、幫助燃脂，同時補充身體需要的營養素，還能消水腫、改善經痛"},
+  piao:     {label:"飄飄／纖飄錠", desc:"溫和不容易拉肚子，主打減少新生脂肪生成、幫助調節血脂", qtyNote:"建議至少準備2盒才能吃滿一個月，只吃半個月效果比較不明顯"},
+  enzyme:   {label:"酵素", desc:"能幫助排便順暢、改善便秘，補充平常攝取不足的膳食纖維，把腸道裡的宿便和毒素慢慢排乾淨"},
+  probiotic:{label:"益生菌", desc:"能維持腸道健康、增加好菌，跟酵素一起搭配使用效果會更明顯"},
+  peptide:  {label:"肽纖飲（可可／奶茶）", desc:"控卡飽足感十足，很適合拿來取代早餐或其中一餐，同時補充蛋白質和膳食纖維"},
+  purple:   {label:"紫纖飲（小紫）", desc:"喝起來清爽像莓果飲，能幫助消水腫、穩定血糖、加快代謝，還能順便增加每天的飲水量"}
+};
+// 顯示與優先順序：依需求動態組合，小粉不再強制優先
+const BODY_PRODUCT_ORDER = ["green","pink","piao","enzyme","probiotic","peptide","purple"];
+
+const BODY_GOAL_MAP = {
+  "想快速瘦身":["green"],
+  "食量大／愛吃澱粉":["green"],
+  "想瘦肚子大腿":["green","pink"],
+  "想加速代謝燃脂":["pink"],
+  "消水腫":["pink","purple"],
+  "經痛困擾":["pink"],
+  "腸胃敏感怕拉肚子":["piao"],
+  "血脂偏高":["piao"],
+  "便秘排便不順":["enzyme"],
+  "蔬果纖維攝取不足":["enzyme","peptide"],
+  "想找代餐控熱量":["peptide"],
+  "愛喝飲料":["peptide","purple"],
+  "喝水量不足":["purple"],
+  "愛吃甜食":["purple"]
+};
+
+// 瘦身觀念（穿插在客人回覆訊息中間）
+const BODY_CONCEPT_TEXT =
+`寶跟你說一下想瘦身必須知道的觀念🤎
+我們花了這麼多年把自己慢慢吃胖才到現在這樣，不能奢求只花一兩個月馬上瘦5~10公斤以上，快速且不健康的瘦身很傷身體的。
+
+我們的產品是保健食品不是仙丹也不是藥物，會不會復胖取決於我們的飲食，所以會很強調產品搭配纖體班營養師教的飲食方法。
+瘦身＝少吃減少熱量攝入＋多動增加代謝，產品跟飲食搭配起來能夠事半功倍瘦更快！
+
+身體脂肪細胞記憶更新的週期是90~180天，建議產品吃到三個月以上能夠瘦更快，三個月內會瘦，三個月後瘦更快，千萬不要吃一個月就放棄。
+
+通常瘦不下來只有兩個原因：方法錯了，或是不夠堅持。挑對產品堅持＋持續調整飲食，才能瘦得長久不易復胖😍`;
+
+// 主推品項只會是小綠或飄飄（腸胃敏感則主推飄飄），小粉不再是固定必推的基礎品項
+// 腸胃敏感時不建議小綠、酵素、益生菌，只有便秘兩天以上才會帶酵素跟益生菌
+function isGutExcluded(key, gutSensitive){
+  return gutSensitive && (key==='green' || key==='enzyme' || key==='probiotic');
+}
+function isGutSensitive(){
+  return state.b_bowel_status === '腸胃敏感（每週拉肚子3次以上）';
+}
+function getPrimaryKey(){
+  return isGutSensitive() ? 'piao' : 'green';
+}
+// 是否曾經／目前有使用猛健樂或瘦瘦針等其他瘦身產品
+function glp1Stage(){
+  if(!state.b_glp1 || state.b_glp1 === '無') return null;
+  if(state.b_glp1.indexOf('現在使用中') === 0) return 'current';
+  if(state.b_glp1.indexOf('曾經使用過') === 0) return 'past';
+  return null;
+}
+const GLP1_CURRENT_PRIMARY = ["purple","peptide"];
+const GLP1_CURRENT_FALLBACK = ["purple","peptide","pink","piao","enzyme","probiotic"];
+
+// 每次都至少搭配3個以上品項
+// 現在使用中猛健樂／瘦瘦針：主要以紫纖飲（小紫）、肽纖飲（可可／奶茶）為主，補充蛋白質營養素、穩定血糖、不容易暴食
+// 曾經使用過：維持正常判斷邏輯（主推＋依需求對應），只在回覆文字裡多給觀念說明
+function computeBodyCore(){
+  const gutSensitive = isGutSensitive();
+  const stage = glp1Stage();
+
+  let core;
+  if(stage === 'current'){
+    core = GLP1_CURRENT_PRIMARY.filter(k=>!isGutExcluded(k, gutSensitive));
+  } else {
+    core = [getPrimaryKey()];
+    state.b_goals.forEach(g=>{
+      (BODY_GOAL_MAP[g]||[]).forEach(k=>{
+        if(isGutExcluded(k, gutSensitive)) return;
+        if(!core.includes(k)) core.push(k);
+      });
+    });
+  }
+
+  if(state.b_bowel_status === '1天' && !core.includes('peptide')){
+    core.push('peptide');
+  }
+  if(state.b_bowel_status === '2天以上'){
+    if(!core.includes('enzyme')) core.push('enzyme');
+    if(!core.includes('probiotic')) core.push('probiotic');
+  }
+
+  if(core.length < 3){
+    const fillOrder = stage === 'current' ? GLP1_CURRENT_FALLBACK : BODY_PRODUCT_ORDER;
+    for(const k of fillOrder){
+      if(core.length>=3) break;
+      if(core.includes(k)) continue;
+      if(isGutExcluded(k, gutSensitive)) continue;
+      core.push(k);
+    }
+  }
+
+  // 依實際加入順序輸出（主推品項一定排第一個），不要用固定順序重新排序，避免小粉被排到第一個
+  return core;
+}
+
+// 加購建議：依勾選需求對應、以及排便頻率，但還沒被包含在核心建議裡的品項
+function computeBodyAddons(core){
+  const gutSensitive = isGutSensitive();
+  const coreSet = new Set(core);
+  const addonGoals = {};
+  function addReason(key, reason){
+    if(coreSet.has(key)) return;
+    if(isGutExcluded(key, gutSensitive)) return;
+    if(!addonGoals[key]) addonGoals[key] = [];
+    addonGoals[key].push(reason);
+  }
+
+  state.b_goals.forEach(g=>{
+    (BODY_GOAL_MAP[g]||[]).forEach(p=>addReason(p, g));
+  });
+
+  // 排便頻率：1天建議搭配可可／奶茶（肽纖飲）即可，2天以上建議加強酵素並搭配益生菌（腸胃敏感則兩者都不建議）
+  if(state.b_bowel_status === '1天'){
+    addReason('peptide', "排便頻率1天，搭配可可／奶茶即可");
+  } else if(state.b_bowel_status === '2天以上'){
+    addReason('enzyme', "排便頻率2天以上，建議加強酵素幫助排便");
+    addReason('probiotic', "排便頻率2天以上，也建議搭配益生菌一起調整腸道");
+  }
+
+  return BODY_PRODUCT_ORDER.filter(k=>addonGoals[k]).map(k=>({key:k, reasons:addonGoals[k]}));
+}
+
+// 依客人勾選的問題／排便頻率，找出這個產品能對應改善哪些勾選項目
+function getMatchedReasons(key){
+  const reasons = state.b_goals.filter(g => (BODY_GOAL_MAP[g]||[]).includes(key));
+  if(key==='peptide' && state.b_bowel_status==='1天') reasons.push('排便頻率1天');
+  if(key==='enzyme' && state.b_bowel_status==='2天以上') reasons.push('排便頻率2天以上');
+  if(key==='probiotic' && state.b_bowel_status==='2天以上') reasons.push('排便頻率2天以上');
+  if(key==='piao' && isGutSensitive()) reasons.push('腸胃敏感容易拉肚子');
+  if(glp1Stage()==='current' && GLP1_CURRENT_PRIMARY.includes(key)) reasons.push('目前使用猛健樂／瘦瘦針期間，補充蛋白質營養素、穩定血糖、不容易暴食');
+  return reasons;
+}
+
+function runBodyReply(){
+  const errBox = document.getElementById('errorBodyReply');
+  errBox.style.display='none';
+
+  const goals = state.b_goals.length ? state.b_goals.join("、") : "整體瘦身";
+
+  // ① 瘦身觀念
+  const conceptText =
+`嗨～謝謝你耐心填問卷🤎
+我看到你目前比較在意的是「${goals}」，先跟你分享一下瘦身必須知道的觀念：
+
+${BODY_CONCEPT_TEXT}`;
+
+  // ② 產品建議：每個品項的原因都依照客人實際勾選的問題來寫，不是固定的單一說法
+  const core = computeBodyCore();
+  const connectors = ["一定要搭配的基礎品項是","接著會建議加入","同時也很適合加上"];
+  const productLines = core.map((key,i)=>{
+    const p = BODY_PRODUCTS[key];
+    const reasons = getMatchedReasons(key);
+    const tie = reasons.length
+      ? `能幫助改善你提到的「${reasons.join("、")}」`
+      : (key === getPrimaryKey() ? "是這次比較適合你的主力品項" : "也很適合搭配在你的瘦身計畫裡");
+    const qty = p.qtyNote ? `（${p.qtyNote}）` : "";
+    return `${connectors[i % connectors.length]}「${p.label}」，${p.desc}，${tie}${qty}。`;
+  }).join("\n\n");
+
+  const addons = computeBodyAddons(core);
+  let addonBlock = "";
+  if(addons.length){
+    const addonLines = addons.map(a=>{
+      const p = BODY_PRODUCTS[a.key];
+      const qty = p.qtyNote ? `（${p.qtyNote}）` : "";
+      return `「${p.label}」－${p.desc}，可以額外加購來改善你提到的「${a.reasons.join("、")}」${qty}。`;
+    }).join("\n\n");
+    addonBlock = `\n\n如果想針對其他在意的問題再加強，也可以考慮加購：\n\n${addonLines}`;
+  }
+
+  const glp1S = glp1Stage();
+  const glp1DrugName = state.b_glp1 && state.b_glp1.split('－')[1] ? state.b_glp1.split('－')[1] : "猛健樂／瘦瘦針";
+  let glp1Block = "";
+  if(glp1S === 'current'){
+    glp1Block = `我看到你目前正在使用「${glp1DrugName}」，這段期間最重要的是補充蛋白質營養素、穩定血糖，也比較不容易暴食，所以主要會以紫纖飲（小紫）、肽纖飲（可可／奶茶）這組搭配為主，飲食也盡量抓「肉菜飯 3:2:1」的比例，更好維持效果🤎\n\n`;
+  } else if(glp1S === 'past'){
+    glp1Block = `我看到你之前有使用過「${glp1DrugName}」，現在已經沒有在用的話，其實跟一般瘦身狀況比較接近，可以照你目前的需求正常搭配就可以🤎\n不過因為身體才剛適應回原本的代謝節奏，飲食均衡跟蛋白質攝取還是建議顧好，比較不容易復胖喔！\n\n`;
+  }
+
+  const classText =
+`🪧 另外跟你分享一個好康
+
+只要購買纖體產品，就能依照購買金額，免費參加專屬的纖體班🤍
+
+滿 $3,840 可以參加「纖體陪伴班」，營養師用圖文＋影片教你外食、聚餐、便利商店怎麼吃也能瘦；
+
+滿 $6,600 則可以參加「客製化纖體陪跑班」，每天上傳三餐，營養師一對一幫你調整飲食、找出卡關原因。
+
+這個課程只有專屬客人才能參加，不對外販售，很多人最後最大的收穫反而是學會怎麼吃、不容易復胖，真心推薦搭配課程一起效果更好😍`;
+
+  const productText =
+`${glp1Block}了解瘦身觀念之後，針對你的狀況，會建議這樣搭配產品：
+
+${productLines}${addonBlock}
+
+不用一次心急，我陪你一起瘦得健康又持久😊`;
+
+  document.getElementById('bodyConceptResult').textContent = conceptText;
+  document.getElementById('bodyProductResult').textContent = productText;
+  document.getElementById('bodyClassResult').textContent = classText;
+  document.getElementById('bodyReplyResultWrap').style.display='block';
+}
+document.getElementById('btnBodyReply').addEventListener('click', runBodyReply);
+
+function bodyRefreshOutputs(){
+  if(document.getElementById('bodyReplyResultWrap').style.display === 'block'){
+    runBodyReply();
+  }
+}
+
+// ================= copy =================
+function copyText(id){
+  const el = document.getElementById(id);
+  const text = el.innerText || el.textContent;
+  doCopy(text);
+}
+
+// 產品介紹頁（美肌介紹／纖體介紹／保健介紹）複製時，自動帶上產品標題，客人才知道是哪個產品的內容
+function copyTextWithTitle(id){
+  const el = document.getElementById(id);
+  const step = el.closest('.step');
+  const titleEl = step ? step.querySelector('.step-head') : null;
+  const title = titleEl ? titleEl.textContent.trim() : '';
+
+  let label = '';
+  const prev = el.previousElementSibling;
+  if(prev && prev.classList.contains('result-head')){
+    const span = prev.querySelector('span');
+    if(span) label = span.textContent.trim();
+  }
+
+  const heading = label ? `${title}｜${label}` : title;
+  const body = el.innerText || el.textContent;
+  const text = heading ? `${heading}\n\n${body}` : body;
+  doCopy(text);
+}
+
+function doCopy(text){
+  navigator.clipboard.writeText(text).then(showToast).catch(()=>{
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast();
+  });
+}
+function showToast(msg){
+  const toast = document.getElementById('toast');
+  toast.textContent = msg || '已複製 🤍';
+  toast.classList.add('show');
+  setTimeout(()=>toast.classList.remove('show'), 1400);
+}
+
+// ================= 一鍵清除，方便諮詢下一位客人 =================
+function resetSkinConsult(){
+  const page = document.getElementById('page-skin-consult');
+  page.querySelectorAll('.opts').forEach(group=>{
+    const key = group.dataset.group;
+    const multi = group.dataset.multi;
+    if(key && key in state){
+      state[key] = multi ? [] : null;
+    }
+    group.querySelectorAll('.opt.selected').forEach(o=>o.classList.remove('selected'));
+  });
+  page.querySelectorAll('.type-btn.selected').forEach(b=>b.classList.remove('selected'));
+
+  state.analyzeText = "";
+  state.selectedType = null;
+  state.manualOverride = false;
+  state.observations = [];
+  state.causesArr = [];
+  state.topIssues = [];
+  state.habits = [];
+  state.keywords = [];
+
+  document.getElementById('analyzeResultWrap').style.display='none';
+  document.getElementById('analyzeResult').textContent = '';
+  document.getElementById('replyResultWrap').style.display='none';
+  document.getElementById('replyResult').textContent = '';
+  const badge = document.getElementById('matchBadge');
+  if(badge) badge.textContent = '';
+  const err1 = document.getElementById('errorAnalyze');
+  if(err1) err1.style.display='none';
+  const err2 = document.getElementById('errorReply');
+  if(err2) err2.style.display='none';
+
+  showToast('已清除，可以諮詢下一位囉🤍');
+}
+
+function resetBodyConsult(){
+  const page = document.getElementById('page-body-consult');
+  page.querySelectorAll('.opts').forEach(group=>{
+    const key = group.dataset.group;
+    const multi = group.dataset.multi;
+    if(key && key in state){
+      state[key] = multi ? [] : null;
+    }
+    group.querySelectorAll('.opt.selected').forEach(o=>o.classList.remove('selected'));
+  });
+
+  document.getElementById('bodyReplyResultWrap').style.display='none';
+  document.getElementById('bodyConceptResult').textContent = '';
+  document.getElementById('bodyProductResult').textContent = '';
+  document.getElementById('bodyClassResult').textContent = '';
+  const errBox = document.getElementById('errorBodyReply');
+  if(errBox) errBox.style.display='none';
+
+  showToast('已清除，可以諮詢下一位囉🤍');
+}
+</script>
+</body>
+</html>
