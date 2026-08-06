@@ -147,6 +147,11 @@
     cursor:pointer;letter-spacing:0.5px;display:flex;align-items:center;gap:6px;
     width:fit-content;margin:0 auto 18px;
   }
+  .notice-box{
+    background:var(--blush);border:1px solid var(--blush-deep);border-radius:16px;
+    padding:16px 18px;margin-bottom:18px;font-size:13px;line-height:1.85;color:var(--plum);
+  }
+  .notice-box b{color:var(--rose-deep);}
   .btn-link{
     background:none;border:none;color:var(--rose-deep);font-size:13px;
     text-decoration:underline;cursor:pointer;padding:0;margin-top:10px;display:block;
@@ -210,6 +215,10 @@
   <div class="page active" id="page-skin-consult">
 
     <button class="btn-reset" onclick="resetSkinConsult()">🔄 清除，準備諮詢下一位客人</button>
+
+    <div class="notice-box">
+      <b>📋 系統使用提醒：</b>此系統只能依照下方勾選的內容給予初步建議，實際上還是需要賣家親自評估客人的完整狀況。產品建議僅供參考，請依照客人的個別情況調整說法後再傳送，才能給客人最貼近需求的回覆🤍
+    </div>
 
     <!-- 給客人的訊息範本 -->
     <div class="step">
@@ -952,6 +961,10 @@
   <div class="page" id="page-body-consult">
 
     <button class="btn-reset" onclick="resetBodyConsult()">🔄 清除，準備諮詢下一位客人</button>
+
+    <div class="notice-box">
+      <b>📋 系統使用提醒：</b>此系統只能依照下方勾選的內容給予初步建議，實際上還是需要賣家親自評估客人的完整狀況。產品建議僅供參考，請依照客人的個別情況調整說法後再傳送，才能給客人最貼近需求的回覆🤎
+    </div>
 
     <div class="step">
       <div class="step-head">📋 客人諮詢表</div>
